@@ -4,13 +4,7 @@ use minifb::{Key, Window, WindowOptions};
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::{
-    collections::{HashMap, HashSet},
-    time::Duration,
-    usize,
-};
-
-type Cell = (isize, isize, isize);
+use std::usize;
 
 struct Model {
     pub board: Vec<Vec<char>>,
