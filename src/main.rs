@@ -33,26 +33,25 @@ fn main() {
 
     let mut window = Window::new("Hornystein", window_width, window_height, default).unwrap();
 
-    let frame_delay = std::time::Duration::from_millis(1000 / 120);
-
     let mut frame_count: u64 = 0;
-    let frame_update_timer: u64 = 1;
+    let frame_update_timer: u64 = 6000;
     framebuffer.set_background_color(0x00ff00);
     framebuffer.set_current_color(0xc35817);
 
     let mut data = init(framebuffer_width, framebuffer_height);
+    render(&mut framebuffer, &data);
     while window.is_open() {
         // listen to inputs
         if window.is_key_down(Key::Escape) {
             break;
         }
 
-        // Render
-        render(&mut framebuffer, &data);
-
         // Update the model
-        if frame_count >= frame_update_timer && frame_count % frame_update_timer == 0 {
+        if frame_count == frame_update_timer {
+            frame_count = 0;
             data = update(data);
+            // Render
+            render(&mut framebuffer, &data);
         }
 
         // Update the window with the framebuffer contents
@@ -60,7 +59,6 @@ fn main() {
             .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
             .unwrap();
 
-        std::thread::sleep(frame_delay);
         frame_count += 1;
     }
 }
@@ -107,6 +105,13 @@ fn render(framebuffer: &mut Framebuffer, data: &Model) {
     let maze_cell_width = data.framebuffer_dimensions.0 as f32 / data.board[0].len() as f32;
     let maze_cell_height = data.framebuffer_dimensions.1 as f32 / data.board.len() as f32;
 
+    println!(
+        "Height: {} / {} = {}",
+        data.framebuffer_dimensions.1,
+        data.board.len(),
+        maze_cell_height
+    );
+
     data.board
         .iter()
         .enumerate()
@@ -116,20 +121,33 @@ fn render(framebuffer: &mut Framebuffer, data: &Model) {
                 .map(move |(i, cell)| (i as f32, j as f32, cell))
         })
         .for_each(|(i, j, char)| {
-            let start_x = i * maze_cell_width;
+            let mut current_x = i * maze_cell_width;
             let start_y = j * maze_cell_height;
 
-            let end_x = start_x + maze_cell_width;
+            let end_x = current_x + maze_cell_width;
             let end_y = start_y + maze_cell_height;
 
-            ((start_x.round() as usize)..(end_x.round() as usize)).for_each(|x| {
-                ((start_y.round() as usize)..(end_y.round() as usize)).for_each(|y| {
+            println!("X: Painting from {}..{}", current_x, end_x);
+            println!("Y: Painting from {}..{}", start_y, end_y);
+
+            while current_x < end_x {
+                let mut current_y = start_y;
+                while current_y < end_y {
                     let color = from_char_to_color(char);
                     framebuffer.set_current_color(color);
 
                     let _ =
-                        framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
-                })
-            })
+                        framebuffer.paint_point(nalgebra_glm::Vec3::new(current_x, current_y, 0.0));
+                    current_y += 0.5;
+                }
+                current_x += 0.5;
+            }
         });
+    framebuffer.set_current_color(0x004455);
+
+    let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(460.0, 460.0, 0.0));
+    let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(461.0, 461.0, 0.0));
+    let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(462.0, 462.0, 0.0));
+    let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(463.0, 463.0, 0.0));
+    let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(464.0, 464.0, 0.0));
 }
