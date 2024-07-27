@@ -70,7 +70,13 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
 
     let board = reader
         .lines()
-        .map(|line| line.unwrap().chars().collect())
+        .filter_map(|line| {
+            let line = line.unwrap();
+            match line.trim() {
+                "" => None,
+                not_empty => Some(not_empty.chars().collect()),
+            }
+        })
         .collect();
 
     Model {
@@ -99,13 +105,6 @@ fn render(framebuffer: &mut Framebuffer, data: &Model) {
     let maze_cell_width = data.framebuffer_dimensions.0 as f32 / data.board[0].len() as f32;
     let maze_cell_height = data.framebuffer_dimensions.1 as f32 / data.board.len() as f32;
 
-    println!(
-        "Height: {} / {} = {}",
-        data.framebuffer_dimensions.1,
-        data.board.len(),
-        maze_cell_height
-    );
-
     data.board
         .iter()
         .enumerate()
@@ -121,9 +120,6 @@ fn render(framebuffer: &mut Framebuffer, data: &Model) {
             let end_x = current_x + maze_cell_width;
             let end_y = start_y + maze_cell_height;
 
-            println!("X: Painting from {}..{}", current_x, end_x);
-            println!("Y: Painting from {}..{}", start_y, end_y);
-
             while current_x < end_x {
                 let mut current_y = start_y;
                 while current_y < end_y {
@@ -137,11 +133,4 @@ fn render(framebuffer: &mut Framebuffer, data: &Model) {
                 current_x += 0.5;
             }
         });
-    framebuffer.set_current_color(0x004455);
-
-    let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(460.0, 460.0, 0.0));
-    let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(461.0, 461.0, 0.0));
-    let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(462.0, 462.0, 0.0));
-    let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(463.0, 463.0, 0.0));
-    let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(464.0, 464.0, 0.0));
 }
