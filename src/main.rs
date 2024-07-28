@@ -120,10 +120,10 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
     }
 }
 
-fn extract_player_starting_position(cells: &Vec<Vec<char>>) -> nalgebra_glm::Vec2 {
-    for j in 0..cells.len() {
-        for i in 0..cells[j].len() {
-            if cells[j][i] == 'p' {
+fn extract_player_starting_position(cells: &[Vec<char>]) -> nalgebra_glm::Vec2 {
+    for (j, row) in cells.iter().enumerate() {
+        for (i, cell) in row.iter().enumerate() {
+            if cell == &'p' {
                 return nalgebra_glm::Vec2::new(i as f32, j as f32);
             }
         }

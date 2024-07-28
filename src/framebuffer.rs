@@ -1,4 +1,4 @@
-use std::{ops::Deref, usize};
+use std::{usize};
 
 use nalgebra_glm::Vec3;
 
