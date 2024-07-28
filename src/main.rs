@@ -1,14 +1,26 @@
 use hornystein::color::Color;
 use hornystein::framebuffer::{self, Framebuffer};
 use minifb::{Key, Window, WindowOptions};
+use nalgebra_glm::{vec2_to_vec3, Vec2};
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::usize;
 
+struct Board {
+    cells: Vec<Vec<char>>,
+    cell_dimensions: (f32, f32),
+}
+
 struct Model {
-    pub board: Vec<Vec<char>>,
+    pub board: Board,
     pub framebuffer_dimensions: (usize, usize),
+    pub player: Player,
+}
+
+struct Player {
+    pub position: Vec2,
+    pub orientation: f32,
 }
 
 fn main() {
@@ -20,20 +32,22 @@ fn main() {
 
     let mut framebuffer = framebuffer::Framebuffer::new(framebuffer_width, framebuffer_height);
 
-    let default = WindowOptions {
+    let window_options = WindowOptions {
         resize: true,
         ..WindowOptions::default()
     };
 
-    let mut window = Window::new("Hornystein", window_width, window_height, default).unwrap();
+    let mut window =
+        Window::new("Hornystein", window_width, window_height, window_options).unwrap();
 
-    let mut frame_count: u64 = 0;
-    let frame_update_timer: u64 = 6000;
+    let mut frame_count: usize = 0;
+    let frame_update_timer: usize = 6000;
     framebuffer.set_background_color(0x00ff00);
     framebuffer.set_current_color(0xc35817);
 
     let mut data = init(framebuffer_width, framebuffer_height);
     render(&mut framebuffer, &data);
+
     while window.is_open() {
         // listen to inputs
         if window.is_key_down(Key::Escape) {
@@ -51,7 +65,7 @@ fn main() {
         // Update the window with the framebuffer contents
         window
             .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
-            .unwrap();
+            .expect("Couldn't update the framebuffer!");
 
         frame_count += 1;
     }
@@ -68,7 +82,7 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
     let file = File::open(file_name).expect("Couldn't open file!");
     let reader = BufReader::new(file);
 
-    let board = reader
+    let cells: Vec<Vec<char>> = reader
         .lines()
         .filter_map(|line| {
             let line = line.unwrap();
@@ -79,10 +93,43 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
         })
         .collect();
 
+    let maze_cell_width = framebuffer_width as f32 / cells[0].len() as f32;
+    let maze_cell_height = framebuffer_height as f32 / cells.len() as f32;
+
+    let mut player_position = extract_player_starting_position(&cells);
+    player_position.x *= maze_cell_width;
+    player_position.x += maze_cell_width / 2.0;
+
+    player_position.y *= maze_cell_height;
+    player_position.y += maze_cell_height / 2.0;
+
+    let board = Board {
+        cells,
+        cell_dimensions: (maze_cell_width, maze_cell_height),
+    };
+
+    let player = Player {
+        position: player_position,
+        orientation: 0.0,
+    };
+
     Model {
         board,
+        player,
         framebuffer_dimensions: (framebuffer_width, framebuffer_height),
     }
+}
+
+fn extract_player_starting_position(cells: &Vec<Vec<char>>) -> nalgebra_glm::Vec2 {
+    for j in 0..cells.len() {
+        for i in 0..cells[j].len() {
+            if cells[j][i] == 'p' {
+                return nalgebra_glm::Vec2::new(i as f32, j as f32);
+            }
+        }
+    }
+
+    nalgebra_glm::Vec2::zeros()
 }
 
 fn update(data: Model) -> Model {
@@ -92,7 +139,7 @@ fn update(data: Model) -> Model {
 fn from_char_to_color(c: &char) -> Color {
     match c {
         '|' | '+' | '-' => 0xff00ff,
-        'p' => 0x00008b,
+        // 'p' => 0x00008b,
         'g' => 0x8b0000,
         _ => 0xffffff,
     }
@@ -102,10 +149,9 @@ fn from_char_to_color(c: &char) -> Color {
 fn render(framebuffer: &mut Framebuffer, data: &Model) {
     framebuffer.clear();
 
-    let maze_cell_width = data.framebuffer_dimensions.0 as f32 / data.board[0].len() as f32;
-    let maze_cell_height = data.framebuffer_dimensions.1 as f32 / data.board.len() as f32;
-
+    let (maze_cell_width, maze_cell_height) = data.board.cell_dimensions;
     data.board
+        .cells
         .iter()
         .enumerate()
         .flat_map(|(j, row)| {
@@ -120,12 +166,12 @@ fn render(framebuffer: &mut Framebuffer, data: &Model) {
             let end_x = current_x + maze_cell_width;
             let end_y = start_y + maze_cell_height;
 
+            let color = from_char_to_color(char);
+            framebuffer.set_current_color(color);
+
             while current_x < end_x {
                 let mut current_y = start_y;
                 while current_y < end_y {
-                    let color = from_char_to_color(char);
-                    framebuffer.set_current_color(color);
-
                     let _ =
                         framebuffer.paint_point(nalgebra_glm::Vec3::new(current_x, current_y, 0.0));
                     current_y += 0.5;
@@ -133,4 +179,37 @@ fn render(framebuffer: &mut Framebuffer, data: &Model) {
                 current_x += 0.5;
             }
         });
+
+    framebuffer.set_current_color(0x000000);
+    let _ = framebuffer.paint_point(vec2_to_vec3(&data.player.position));
+
+    cast_ray_2d(framebuffer, &data.board, &data.player);
+}
+
+fn cast_ray_2d(framebuffer: &mut Framebuffer, maze: &Board, player: &Player) {
+    let mut d = 0.0;
+
+    framebuffer.set_current_color(0x000000);
+    loop {
+        let cos = d * player.orientation.cos();
+        let sin = d * player.orientation.sin();
+
+        let x = player.position.x + cos;
+        let y = player.position.y + sin;
+
+        // println!("Checking cords at: {}, {}", x, y);
+
+        let i = (x / maze.cell_dimensions.0) as usize;
+        let j = (y / maze.cell_dimensions.1) as usize;
+
+        let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(x, y, 0.0));
+
+        let cell = maze.cells[j][i];
+        // println!("Checking cell [{}] at: {}, {}", cell, x, y);
+        if cell == '+' || cell == '-' || cell == '|' {
+            return;
+        }
+
+        d += 3.0;
+    }
 }
