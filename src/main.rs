@@ -1,6 +1,9 @@
+use hornystein::are_equal;
 use hornystein::color::Color;
 use hornystein::framebuffer::{self, Framebuffer};
 use minifb::{Key, KeyRepeat, MouseMode, Window, WindowOptions};
+use mouse_rs::types::Point;
+use mouse_rs::Mouse;
 use nalgebra_glm::{vec2_to_vec3, Vec2};
 use std::env;
 use std::fs::File;
@@ -57,7 +60,8 @@ fn main() {
     let mut window =
         Window::new("Hornystein", window_width, window_height, window_options).unwrap();
     window.set_key_repeat_delay(0.01);
-    window.set_cursor_visibility(false);
+    // window.set_cursor_visibility(false);
+    let mouse = Mouse::new();
 
     let frame_delay = Duration::from_millis(1000 / 240);
     framebuffer.set_background_color(0x00ff00);
@@ -94,16 +98,28 @@ fn main() {
             })
             .collect();
 
-        let mouse_pos = window
-            .get_unscaled_mouse_pos(MouseMode::Pass)
-            .map(|(x, _)| x);
-        let mouse_velocity = previous_mouse_x
-            .and_then(|previous_x| mouse_pos.map(|current_x| current_x - previous_x));
-        if let Some(delta_x) = mouse_velocity {
-            messages.push(Message::Rotate(PLAYER_ROTATION_SPEED * delta_x))
-        }
+        previous_mouse_x = match previous_mouse_x {
+            Some(previous_x) => mouse.get_position().ok().map(|Point { x, y }| {
+                let current_x = x as f32;
+                let delta_x = current_x - previous_x;
 
-        previous_mouse_x = mouse_pos;
+                messages.push(Message::Rotate(PLAYER_ROTATION_SPEED * delta_x));
+
+                let (w_width, _) = window.get_size();
+                let (w_x, _) = window.get_position();
+                let w_width = w_width as f32;
+                let w_x = w_x as f32;
+
+                if current_x < w_x || current_x > (w_width + w_x) {
+                    let x = w_width / 2.0 + w_x;
+                    mouse.move_to(x as i32, y).expect("Unable to move mouse!");
+                    x
+                } else {
+                    current_x
+                }
+            }),
+            None => mouse.get_position().ok().map(|Point { x, .. }| x as f32),
+        };
 
         for msg in messages {
             data = update(data, msg);
