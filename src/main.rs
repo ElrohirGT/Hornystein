@@ -6,6 +6,8 @@ use std::collections::VecDeque;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::os::unix::thread;
+use std::time::Duration;
 use std::usize;
 
 struct Board {
@@ -32,7 +34,7 @@ enum Message {
 }
 
 const PLAYER_SPEED: f32 = 1.5;
-const PLAYER_ROTATION_SPEED: f32 = std::f32::consts::FRAC_PI_8 / 4.0;
+const PLAYER_ROTATION_SPEED: f32 = std::f32::consts::FRAC_PI_8 / 6.0;
 
 fn main() {
     let window_width = 800;
@@ -51,67 +53,52 @@ fn main() {
     let mut window =
         Window::new("Hornystein", window_width, window_height, window_options).unwrap();
 
-    let mut frame_count: usize = 0;
-    let frame_update_timer: usize = 1;
+    let frame_delay = Duration::from_millis(1000 / 240);
     framebuffer.set_background_color(0x00ff00);
     framebuffer.set_current_color(0xc35817);
 
     let mut data = init(framebuffer_width, framebuffer_height);
     render(&mut framebuffer, &data);
 
-    let mut message_queue = VecDeque::with_capacity(100);
     while window.is_open() {
         // listen to inputs
         if window.is_key_down(Key::Escape) {
             break;
         }
 
-        // Update and render the model
-        if frame_count != frame_update_timer {
-            frame_count += 1;
-            // Update the window with the framebuffer contents
-            window
-                .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
-                .expect("Couldn't update the framebuffer!");
-            continue;
-        }
-
-        frame_count = 0;
-        window
+        let messages: Vec<Message> = window
             .get_keys_pressed(KeyRepeat::Yes)
-            .iter()
-            .for_each(|key| match (key, message_queue.front()) {
-                (Key::W, Some(Message::Advance(_))) => {}
-                (Key::W, _) => {
+            .into_iter()
+            .filter_map(|key| match key {
+                Key::W => {
                     let x_delta = PLAYER_SPEED * data.player.orientation.cos();
                     let y_delta = PLAYER_SPEED * data.player.orientation.sin();
-                    message_queue
-                        .push_back(Message::Advance(nalgebra_glm::Vec2::new(x_delta, y_delta)));
+                    Some(Message::Advance(nalgebra_glm::Vec2::new(x_delta, y_delta)))
                 }
-                (Key::S, Some(Message::Backwards(_))) => {}
-                (Key::S, _) => {
+                Key::S => {
                     let x_delta = PLAYER_SPEED * data.player.orientation.cos();
                     let y_delta = PLAYER_SPEED * data.player.orientation.sin();
-                    message_queue.push_back(Message::Backwards(nalgebra_glm::Vec2::new(
+                    Some(Message::Backwards(nalgebra_glm::Vec2::new(
                         -x_delta, -y_delta,
-                    )));
+                    )))
                 }
-                (Key::A, Some(Message::RotateCounterClockwise(_))) => {}
-                (Key::A, _) => {
-                    message_queue
-                        .push_back(Message::RotateCounterClockwise(-PLAYER_ROTATION_SPEED));
-                }
-                (Key::D, Some(Message::RotateClockwise(_))) => {}
-                (Key::D, _) => {
-                    message_queue.push_back(Message::RotateClockwise(PLAYER_ROTATION_SPEED));
-                }
-                _ => {}
-            });
+                Key::A => Some(Message::RotateCounterClockwise(-PLAYER_ROTATION_SPEED)),
+                Key::D => Some(Message::RotateClockwise(PLAYER_ROTATION_SPEED)),
+                _ => None,
+            })
+            .collect();
 
-        while let Some(msg) = message_queue.pop_front() {
+        for msg in messages {
             data = update(data, msg);
         }
         render(&mut framebuffer, &data);
+
+        // Update the window with the framebuffer contents
+        window
+            .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
+            .expect("Couldn't update the framebuffer!");
+
+        std::thread::sleep(frame_delay);
     }
 }
 
