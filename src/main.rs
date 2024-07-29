@@ -1,6 +1,6 @@
 use hornystein::color::Color;
 use hornystein::framebuffer::{self, Framebuffer};
-use minifb::{Key, KeyRepeat, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, MouseMode, Window, WindowOptions};
 use nalgebra_glm::{vec2_to_vec3, Vec2};
 use std::env;
 use std::fs::File;
@@ -40,14 +40,14 @@ enum Message {
 }
 
 const PLAYER_SPEED: f32 = 1.5;
-const PLAYER_ROTATION_SPEED: f32 = std::f32::consts::FRAC_PI_8 / 6.0;
+const PLAYER_ROTATION_SPEED: f32 = 0.005;
 
 fn main() {
     let window_width = 800;
     let window_height = 800;
 
-    let framebuffer_width = 500;
-    let framebuffer_height = 500;
+    let framebuffer_width = 1000;
+    let framebuffer_height = 1000;
 
     let mut framebuffer = framebuffer::Framebuffer::new(framebuffer_width, framebuffer_height);
 
@@ -58,6 +58,8 @@ fn main() {
 
     let mut window =
         Window::new("Hornystein", window_width, window_height, window_options).unwrap();
+    window.set_key_repeat_delay(0.01);
+    window.set_cursor_visibility(false);
 
     let frame_delay = Duration::from_millis(1000 / 240);
     framebuffer.set_background_color(0x00ff00);
@@ -66,13 +68,14 @@ fn main() {
     let mut data = init(framebuffer_width, framebuffer_height);
     render(&mut framebuffer, &data);
 
+    let mut previous_mouse_x = None;
     while window.is_open() {
         // listen to inputs
         if window.is_key_down(Key::Escape) {
             break;
         }
 
-        let messages: Vec<Message> = window
+        let mut messages: Vec<Message> = window
             .get_keys_pressed(KeyRepeat::Yes)
             .into_iter()
             .filter_map(|key| match key {
@@ -94,6 +97,17 @@ fn main() {
                 _ => None,
             })
             .collect();
+
+        let mouse_pos = window
+            .get_unscaled_mouse_pos(MouseMode::Pass)
+            .map(|(x, _)| x);
+        let mouse_velocity = previous_mouse_x
+            .and_then(|previous_x| mouse_pos.map(|current_x| current_x - previous_x));
+        if let Some(delta_x) = mouse_velocity {
+            messages.push(Message::RotateClockwise(PLAYER_ROTATION_SPEED * delta_x))
+        }
+
+        previous_mouse_x = mouse_pos;
 
         for msg in messages {
             data = update(data, msg);
