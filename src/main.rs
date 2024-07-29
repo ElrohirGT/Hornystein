@@ -152,7 +152,7 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
         fov: std::f32::consts::FRAC_PI_2,
     };
 
-    let mode = GameMode::TwoD;
+    let mode = GameMode::ThreeD;
 
     Model {
         board,
@@ -174,12 +174,24 @@ fn extract_player_starting_position(cells: &[Vec<char>]) -> nalgebra_glm::Vec2 {
     nalgebra_glm::Vec2::zeros()
 }
 
+pub fn is_border(c: &char) -> bool {
+    matches!(c, '+' | '|' | '-')
+}
+
 fn update(data: Model, msg: Message) -> Model {
     let Model { player, mode, .. } = data;
 
     match msg {
         Message::Advance(delta) | Message::Backwards(delta) => {
-            let position = player.position + delta;
+            let mut position = player.position + delta;
+
+            let i = (position.x / data.board.cell_dimensions.0) as usize;
+            let j = (position.y / data.board.cell_dimensions.1) as usize;
+
+            if is_border(&data.board.cells[j][i]) {
+                position = player.position;
+            }
+
             let player = Player { position, ..player };
             Model {
                 player,
