@@ -32,10 +32,8 @@ struct Player {
 }
 
 enum Message {
-    Advance(nalgebra_glm::Vec2),
-    Backwards(nalgebra_glm::Vec2),
-    RotateClockwise(f32),
-    RotateCounterClockwise(f32),
+    Move(nalgebra_glm::Vec2),
+    Rotate(f32),
     TogleMode,
 }
 
@@ -82,17 +80,15 @@ fn main() {
                 Key::W => {
                     let x_delta = PLAYER_SPEED * data.player.orientation.cos();
                     let y_delta = PLAYER_SPEED * data.player.orientation.sin();
-                    Some(Message::Advance(nalgebra_glm::Vec2::new(x_delta, y_delta)))
+                    Some(Message::Move(nalgebra_glm::Vec2::new(x_delta, y_delta)))
                 }
                 Key::S => {
                     let x_delta = PLAYER_SPEED * data.player.orientation.cos();
                     let y_delta = PLAYER_SPEED * data.player.orientation.sin();
-                    Some(Message::Backwards(nalgebra_glm::Vec2::new(
-                        -x_delta, -y_delta,
-                    )))
+                    Some(Message::Move(nalgebra_glm::Vec2::new(-x_delta, -y_delta)))
                 }
-                Key::A => Some(Message::RotateCounterClockwise(-PLAYER_ROTATION_SPEED)),
-                Key::D => Some(Message::RotateClockwise(PLAYER_ROTATION_SPEED)),
+                Key::A => Some(Message::Rotate(-PLAYER_ROTATION_SPEED)),
+                Key::D => Some(Message::Rotate(PLAYER_ROTATION_SPEED)),
                 Key::M => Some(Message::TogleMode),
                 _ => None,
             })
@@ -104,7 +100,7 @@ fn main() {
         let mouse_velocity = previous_mouse_x
             .and_then(|previous_x| mouse_pos.map(|current_x| current_x - previous_x));
         if let Some(delta_x) = mouse_velocity {
-            messages.push(Message::RotateClockwise(PLAYER_ROTATION_SPEED * delta_x))
+            messages.push(Message::Rotate(PLAYER_ROTATION_SPEED * delta_x))
         }
 
         previous_mouse_x = mouse_pos;
@@ -196,7 +192,7 @@ fn update(data: Model, msg: Message) -> Model {
     let Model { player, mode, .. } = data;
 
     match msg {
-        Message::Advance(delta) | Message::Backwards(delta) => {
+        Message::Move(delta) => {
             let mut position = player.position + delta;
 
             let i = (position.x / data.board.cell_dimensions.0) as usize;
@@ -213,7 +209,7 @@ fn update(data: Model, msg: Message) -> Model {
                 ..data
             }
         }
-        Message::RotateCounterClockwise(delta) | Message::RotateClockwise(delta) => {
+        Message::Rotate(delta) => {
             let orientation = player.orientation + delta;
             let player = Player {
                 orientation,
