@@ -2,11 +2,9 @@ use hornystein::color::Color;
 use hornystein::framebuffer::{self, Framebuffer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use nalgebra_glm::{vec2_to_vec3, Vec2};
-use std::collections::VecDeque;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::os::unix::thread;
 use std::time::Duration;
 use std::usize;
 
@@ -15,15 +13,22 @@ struct Board {
     cell_dimensions: (f32, f32),
 }
 
+enum GameMode {
+    TwoD,
+    ThreeD,
+}
+
 struct Model {
     pub board: Board,
     pub framebuffer_dimensions: (usize, usize),
     pub player: Player,
+    pub mode: GameMode,
 }
 
 struct Player {
     pub position: Vec2,
     pub orientation: f32,
+    pub fov: f32,
 }
 
 enum Message {
@@ -31,6 +36,7 @@ enum Message {
     Backwards(nalgebra_glm::Vec2),
     RotateClockwise(f32),
     RotateCounterClockwise(f32),
+    TogleMode,
 }
 
 const PLAYER_SPEED: f32 = 1.5;
@@ -84,6 +90,7 @@ fn main() {
                 }
                 Key::A => Some(Message::RotateCounterClockwise(-PLAYER_ROTATION_SPEED)),
                 Key::D => Some(Message::RotateClockwise(PLAYER_ROTATION_SPEED)),
+                Key::M => Some(Message::TogleMode),
                 _ => None,
             })
             .collect();
@@ -142,11 +149,15 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
     let player = Player {
         position: player_position,
         orientation: 0.0,
+        fov: std::f32::consts::FRAC_PI_2,
     };
+
+    let mode = GameMode::TwoD;
 
     Model {
         board,
         player,
+        mode,
         framebuffer_dimensions: (framebuffer_width, framebuffer_height),
     }
 }
@@ -164,20 +175,16 @@ fn extract_player_starting_position(cells: &[Vec<char>]) -> nalgebra_glm::Vec2 {
 }
 
 fn update(data: Model, msg: Message) -> Model {
-    let Model {
-        board,
-        framebuffer_dimensions,
-        player,
-    } = data;
+    let Model { player, mode, .. } = data;
 
     match msg {
         Message::Advance(delta) | Message::Backwards(delta) => {
             let position = player.position + delta;
             let player = Player { position, ..player };
             Model {
-                board,
-                framebuffer_dimensions,
                 player,
+                mode,
+                ..data
             }
         }
         Message::RotateCounterClockwise(delta) | Message::RotateClockwise(delta) => {
@@ -187,9 +194,20 @@ fn update(data: Model, msg: Message) -> Model {
                 ..player
             };
             Model {
-                board,
-                framebuffer_dimensions,
                 player,
+                mode,
+                ..data
+            }
+        }
+        Message::TogleMode => {
+            let mode = match mode {
+                GameMode::TwoD => GameMode::ThreeD,
+                GameMode::ThreeD => GameMode::TwoD,
+            };
+            Model {
+                player,
+                mode,
+                ..data
             }
         }
     }
@@ -208,53 +226,110 @@ fn from_char_to_color(c: &char) -> Color {
 fn render(framebuffer: &mut Framebuffer, data: &Model) {
     framebuffer.clear();
 
-    let (maze_cell_width, maze_cell_height) = data.board.cell_dimensions;
-    data.board
-        .cells
-        .iter()
-        .enumerate()
-        .flat_map(|(j, row)| {
-            row.iter()
+    match data.mode {
+        GameMode::TwoD => {
+            let (maze_cell_width, maze_cell_height) = data.board.cell_dimensions;
+            data.board
+                .cells
+                .iter()
                 .enumerate()
-                .map(move |(i, cell)| (i as f32, j as f32, cell))
-        })
-        .for_each(|(i, j, char)| {
-            let mut current_x = i * maze_cell_width;
-            let start_y = j * maze_cell_height;
+                .flat_map(|(j, row)| {
+                    row.iter()
+                        .enumerate()
+                        .map(move |(i, cell)| (i as f32, j as f32, cell))
+                })
+                .for_each(|(i, j, char)| {
+                    let mut current_x = i * maze_cell_width;
+                    let start_y = j * maze_cell_height;
 
-            let end_x = current_x + maze_cell_width;
-            let end_y = start_y + maze_cell_height;
+                    let end_x = current_x + maze_cell_width;
+                    let end_y = start_y + maze_cell_height;
 
-            let color = from_char_to_color(char);
-            framebuffer.set_current_color(color);
+                    let color = from_char_to_color(char);
+                    framebuffer.set_current_color(color);
 
-            while current_x < end_x {
-                let mut current_y = start_y;
-                while current_y < end_y {
-                    let _ =
-                        framebuffer.paint_point(nalgebra_glm::Vec3::new(current_x, current_y, 0.0));
-                    current_y += 0.5;
-                }
-                current_x += 0.5;
+                    while current_x < end_x {
+                        let mut current_y = start_y;
+                        while current_y < end_y {
+                            let _ = framebuffer
+                                .paint_point(nalgebra_glm::Vec3::new(current_x, current_y, 0.0));
+                            current_y += 0.5;
+                        }
+                        current_x += 0.5;
+                    }
+                });
+
+            let num_rays = 5;
+            for i in 0..num_rays {
+                let curren_ray = i as f32 / num_rays as f32;
+                let a = data.player.orientation - (data.player.fov / 2.0)
+                    + (data.player.fov * curren_ray);
+
+                cast_ray_2d(framebuffer, &data.board, &data.player, a);
             }
-        });
 
-    cast_ray_2d(framebuffer, &data.board, &data.player);
+            framebuffer.set_current_color(0x0000ff);
+            let _ = framebuffer.paint_point(vec2_to_vec3(&data.player.position));
+        }
+        GameMode::ThreeD => {
+            let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
+            let player = &data.player;
+            let num_rays = framebuffer_width;
+            let half_width = framebuffer_width as f32 / 2.0;
+            let half_height = framebuffer_height as f32 / 2.0;
 
-    framebuffer.set_current_color(0x0000ff);
-    let _ = framebuffer.paint_point(vec2_to_vec3(&data.player.position));
+            for i in 0..num_rays {
+                let current_ray = i as f32 / num_rays as f32;
+                let orientation =
+                    player.orientation - (player.fov / 2.0) + (player.fov * current_ray);
+
+                let intersect = cast_ray_3d(framebuffer, &data.board, player, orientation, false);
+                let color = from_char_to_color(&intersect.impact);
+                framebuffer.set_current_color(color);
+
+                let distance_to_wall = intersect.distance;
+                let distance_to_projection_plane = 6.0 * std::f32::consts::PI;
+
+                let stake_height = (half_height / distance_to_wall) * distance_to_projection_plane;
+
+                let stake_top = (half_height - (stake_height / 2.0)) as usize;
+                let stake_bottom = (half_height + (stake_height / 2.0)) as usize;
+
+                for y in stake_top..stake_bottom {
+                    let _ =
+                        framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, y as f32, 0.0));
+                }
+            }
+        }
+    }
 }
 
-fn ray_2d(maze: &Board, player: &Player) -> nalgebra_glm::Vec2 {
-    let mut d = 0.0;
+struct Intersect {
+    pub distance: f32,
+    pub impact: char,
+}
 
+fn cast_ray_3d(
+    framebuffer: &mut Framebuffer,
+    maze: &Board,
+    player: &Player,
+    orientation: f32,
+    should_draw: bool,
+) -> Intersect {
+    let mut distance = 0.0;
+
+    framebuffer.set_current_color(0x000000);
     loop {
-        let cos = d * player.orientation.cos();
-        let sin = d * player.orientation.sin();
+        let cos = distance * orientation.cos();
+        let sin = distance * orientation.sin();
 
         let x = player.position.x + cos;
         let y = player.position.y + sin;
         let position = nalgebra_glm::Vec2::new(x, y);
+
+        if should_draw {
+            let _ = framebuffer.paint_point(vec2_to_vec3(&position));
+        }
 
         // println!("Checking cords at: {}, {}", x, y);
 
@@ -264,24 +339,28 @@ fn ray_2d(maze: &Board, player: &Player) -> nalgebra_glm::Vec2 {
 
         // println!("Checking cell [{}] at: {}, {}", cell, x, y);
         if cell == '+' || cell == '-' || cell == '|' {
-            return position;
+            return Intersect {
+                distance,
+                impact: cell,
+            };
         }
 
-        d += 1.0;
+        distance += 1.0;
     }
 }
 
-fn cast_ray_2d(framebuffer: &mut Framebuffer, maze: &Board, player: &Player) {
+fn cast_ray_2d(framebuffer: &mut Framebuffer, maze: &Board, player: &Player, orientation: f32) {
     let mut d = 0.0;
 
     framebuffer.set_current_color(0x000000);
     loop {
-        let cos = d * player.orientation.cos();
-        let sin = d * player.orientation.sin();
+        let cos = d * orientation.cos();
+        let sin = d * orientation.sin();
 
         let x = player.position.x + cos;
         let y = player.position.y + sin;
         let position = nalgebra_glm::Vec2::new(x, y);
+
         let _ = framebuffer.paint_point(vec2_to_vec3(&position));
 
         // println!("Checking cords at: {}, {}", x, y);
