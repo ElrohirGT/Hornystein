@@ -1,7 +1,7 @@
-use hornystein::are_equal;
+
 use hornystein::color::Color;
 use hornystein::framebuffer::{self, Framebuffer};
-use minifb::{Key, KeyRepeat, MouseMode, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use mouse_rs::types::Point;
 use mouse_rs::Mouse;
 use nalgebra_glm::{vec2_to_vec3, Vec2};
@@ -313,7 +313,7 @@ fn render(framebuffer: &mut Framebuffer, data: &Model) {
             let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
             let player = &data.player;
             let num_rays = framebuffer_width;
-            let half_width = framebuffer_width as f32 / 2.0;
+            let _half_width = framebuffer_width as f32 / 2.0;
             let half_height = framebuffer_height as f32 / 2.0;
 
             for i in 0..num_rays {
