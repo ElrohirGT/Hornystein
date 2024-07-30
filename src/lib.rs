@@ -1,8 +1,11 @@
+use render::GameTextures;
+
 pub mod bmp;
 pub mod color;
 pub mod framebuffer;
 pub mod raycaster;
 pub mod render;
+pub mod texture;
 
 extern crate nalgebra_glm as glm;
 
@@ -25,6 +28,7 @@ pub struct Model {
     pub framebuffer_dimensions: (usize, usize),
     pub player: Player,
     pub mode: GameMode,
+    pub textures: GameTextures,
 }
 
 pub struct Player {

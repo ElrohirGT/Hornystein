@@ -4,8 +4,27 @@ use crate::{
     color::Color,
     framebuffer::Framebuffer,
     raycaster::{cast_ray_2d, cast_ray_3d},
+    texture::Texture,
     GameMode, Model,
 };
+
+pub struct GameTextures {
+    pub walls: Texture,
+}
+
+fn cell_to_texture_color(c: &char, tx: u32, ty: u32, textures: GameTextures) -> Color {
+    match c {
+        '|' | '+' | '-' => textures.walls.get_pixel_color(tx, ty),
+        _ => 0xffffff.into(),
+    }
+}
+
+fn from_char_to_texture<'a>(c: &char, textures: &'a GameTextures) -> Option<&'a Texture> {
+    match c {
+        '|' | '+' | '-' => Some(&textures.walls),
+        _ => None,
+    }
+}
 
 fn from_char_to_color(c: &char) -> Color {
     match c {
@@ -93,8 +112,6 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
         let orientation = player.orientation - (player.fov / 2.0) + (player.fov * current_ray);
 
         let intersect = cast_ray_3d(framebuffer, &data.board, player, orientation);
-        let color = from_char_to_color(&intersect.impact);
-        framebuffer.set_current_color(color);
 
         let distance_to_wall = intersect.distance;
         let distance_to_projection_plane = 6.0 * std::f32::consts::PI;
@@ -105,6 +122,17 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
         let stake_bottom = (half_height + (stake_height / 2.0)) as usize;
 
         for y in stake_top..stake_bottom {
+            let color = match from_char_to_texture(&intersect.impact, &data.textures) {
+                Some(texture) => {
+                    // Calculate tx and ty.
+                    // Return color from texture.
+                    let ty = (y as f32 - stake_top as f32) / stake_height * (texture.height as f32);
+                    let tx = intersect.bx * texture.width as f32;
+                    texture.get_pixel_color(tx as u32, ty as u32)
+                }
+                None => from_char_to_color(&intersect.impact),
+            };
+            framebuffer.set_current_color(color);
             let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, y as f32, 0.0));
         }
     }

@@ -1,5 +1,6 @@
 use hornystein::framebuffer;
-use hornystein::render::render;
+use hornystein::render::{render, GameTextures};
+use hornystein::texture::Texture;
 use hornystein::{Board, GameMode, Model, Player};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use mouse_rs::types::Point;
@@ -38,7 +39,7 @@ fn main() {
     // window.set_cursor_visibility(false);
     let mouse = Mouse::new();
 
-    let frame_delay = Duration::from_millis(1000 / 240);
+    let frame_delay = Duration::from_millis(1000 / 60);
     framebuffer.set_background_color(0x717171);
 
     let mut data = init(framebuffer_width, framebuffer_height);
@@ -127,6 +128,14 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
     let file_name = args.next().expect("No file name received!");
     println!("Reading file name: {}", file_name);
 
+    let texture_dir = args.next().expect("No asset dir received!");
+    println!("Loading textures from: {}...", file_name);
+
+    let path = format!("{}{}", texture_dir, "tc19_wall.jpg");
+    println!("Loading path: {}", path);
+    let walls = Texture::new(&path);
+    let textures = GameTextures { walls };
+
     let file = File::open(file_name).expect("Couldn't open file!");
     let reader = BufReader::new(file);
 
@@ -168,6 +177,7 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
         board,
         player,
         mode,
+        textures,
         framebuffer_dimensions: (framebuffer_width, framebuffer_height),
     }
 }
