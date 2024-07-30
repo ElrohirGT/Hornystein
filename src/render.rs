@@ -9,12 +9,34 @@ use crate::{
 };
 
 pub struct GameTextures {
-    pub walls: Texture,
+    pub horizontal_wall: Texture,
+    pub vertical_wall: Texture,
+    pub corner_wall: Texture,
+}
+
+impl GameTextures {
+    pub fn new(asset_dir: &str) -> Self {
+        let horizontal_wall = format!("{}{}", asset_dir, "small_wall.jpg");
+        let vertical_wall = format!("{}{}", asset_dir, "large_wall.jpg");
+        let corner_wall = format!("{}{}", asset_dir, "corner.jpg");
+
+        let horizontal_wall = Texture::new(&horizontal_wall);
+        let vertical_wall = Texture::new(&vertical_wall);
+        let corner_wall = Texture::new(&corner_wall);
+
+        GameTextures {
+            horizontal_wall,
+            vertical_wall,
+            corner_wall,
+        }
+    }
 }
 
 fn from_char_to_texture<'a>(c: &char, textures: &'a GameTextures) -> Option<&'a Texture> {
     match c {
-        '|' | '+' | '-' => Some(&textures.walls),
+        '-' => Some(&textures.horizontal_wall),
+        '|' => Some(&textures.vertical_wall),
+        '+' => Some(&textures.corner_wall),
         _ => None,
     }
 }
@@ -92,7 +114,7 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
 
     // Render ground
     for i in 0..(framebuffer_width) {
-        let ground_color = 0x383838;
+        let ground_color = 0x058a00;
         framebuffer.set_current_color(ground_color);
         for j in (half_height as usize)..framebuffer_height {
             let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, j as f32, 0.0));

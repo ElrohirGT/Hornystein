@@ -1,6 +1,5 @@
 use hornystein::framebuffer;
 use hornystein::render::{render, GameTextures};
-use hornystein::texture::Texture;
 use hornystein::{Board, GameMode, Model, Player};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use mouse_rs::types::Point;
@@ -42,7 +41,7 @@ fn main() {
 
     let target_framerate = 60;
     let frame_delay = Duration::from_millis(1000 / target_framerate);
-    framebuffer.set_background_color(0x717171);
+    framebuffer.set_background_color(0x0098de);
 
     let mut data = init(framebuffer_width, framebuffer_height);
     render(&mut framebuffer, &data);
@@ -147,10 +146,7 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
     let texture_dir = args.next().expect("No asset dir received!");
     println!("Loading textures from: {}...", file_name);
 
-    let path = format!("{}{}", texture_dir, "tc19_wall.jpg");
-    println!("Loading path: {}", path);
-    let walls = Texture::new(&path);
-    let textures = GameTextures { walls };
+    let textures = GameTextures::new(&texture_dir);
 
     let file = File::open(file_name).expect("Couldn't open file!");
     let reader = BufReader::new(file);
