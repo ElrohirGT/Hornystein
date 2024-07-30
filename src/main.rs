@@ -1,4 +1,4 @@
-use hornystein::framebuffer::{self, Framebuffer};
+use hornystein::framebuffer;
 use hornystein::render::render;
 use hornystein::{Board, GameMode, Model, Player};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
@@ -8,7 +8,6 @@ use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::Duration;
-use std::usize;
 
 enum Message {
     Move(nalgebra_glm::Vec2),
