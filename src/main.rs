@@ -5,10 +5,11 @@ use hornystein::{Board, GameMode, Model, Player};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use mouse_rs::types::Point;
 use mouse_rs::Mouse;
+use std::collections::VecDeque;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 enum Message {
     Move(nalgebra_glm::Vec2),
@@ -36,10 +37,11 @@ fn main() {
     let mut window =
         Window::new("Hornystein", window_width, window_height, window_options).unwrap();
     window.set_key_repeat_delay(0.01);
-    // window.set_cursor_visibility(false);
+    window.set_cursor_visibility(false);
     let mouse = Mouse::new();
 
-    let frame_delay = Duration::from_millis(1000 / 60);
+    let target_framerate = 60;
+    let frame_delay = Duration::from_millis(1000 / target_framerate);
     framebuffer.set_background_color(0x717171);
 
     let mut data = init(framebuffer_width, framebuffer_height);
@@ -48,7 +50,11 @@ fn main() {
     let mut previous_mouse_x = None;
     let mode_cooldown = 5;
     let mut mode_cooldown_timer = 0;
+
+    let last_recorded_frames_max_count = 10;
+    let mut last_recorded_frames = VecDeque::with_capacity(last_recorded_frames_max_count);
     while window.is_open() {
+        let start = Instant::now();
         mode_cooldown_timer = (mode_cooldown_timer - 1).max(0);
         // listen to inputs
         if window.is_key_down(Key::Escape) {
@@ -116,6 +122,16 @@ fn main() {
             .update_with_buffer(&framebuffer.buffer, framebuffer_width, framebuffer_height)
             .expect("Couldn't update the framebuffer!");
 
+        let end = Instant::now();
+        if last_recorded_frames.len() == last_recorded_frames_max_count {
+            last_recorded_frames.pop_front();
+        }
+        last_recorded_frames.push_back((end - start).as_millis());
+
+        let avg_millis: f32 = last_recorded_frames.iter().map(|&u| u as f32).sum::<f32>()
+            / last_recorded_frames_max_count as f32;
+        let avg_frames = 1000.0 / avg_millis;
+        window.set_title(format!("Hornystein - {:.2} fps", avg_frames).as_ref());
         std::thread::sleep(frame_delay);
     }
 }

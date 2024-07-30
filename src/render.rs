@@ -90,7 +90,7 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
     let half_height = framebuffer_height as f32 / 2.0;
     let player = &data.player;
 
-    // Render sky and ground
+    // Render ground
     for i in 0..(framebuffer_width) {
         let ground_color = 0x383838;
         framebuffer.set_current_color(ground_color);
@@ -109,6 +109,7 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
         let distance_to_wall = intersect.distance;
         let distance_to_projection_plane = 6.0 * std::f32::consts::PI;
 
+        // let distance_to_wall = intersect.distance * (orientation - player.orientation).cos();
         let stake_height = (half_height / distance_to_wall) * distance_to_projection_plane;
 
         let stake_top = (half_height - (stake_height / 2.0)) as usize;
