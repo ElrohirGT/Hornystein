@@ -1,5 +1,3 @@
-use std::{usize};
-
 use nalgebra_glm::Vec3;
 
 use crate::{are_equal, bmp::write_bmp_file, color::Color};

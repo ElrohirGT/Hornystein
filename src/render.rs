@@ -12,13 +12,6 @@ pub struct GameTextures {
     pub walls: Texture,
 }
 
-fn cell_to_texture_color(c: &char, tx: u32, ty: u32, textures: GameTextures) -> Color {
-    match c {
-        '|' | '+' | '-' => textures.walls.get_pixel_color(tx, ty),
-        _ => 0xffffff.into(),
-    }
-}
-
 fn from_char_to_texture<'a>(c: &char, textures: &'a GameTextures) -> Option<&'a Texture> {
     match c {
         '|' | '+' | '-' => Some(&textures.walls),
