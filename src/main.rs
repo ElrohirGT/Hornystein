@@ -63,8 +63,7 @@ fn main() {
     let mouse = Mouse::new();
 
     let frame_delay = Duration::from_millis(1000 / 240);
-    framebuffer.set_background_color(0x00ff00);
-    framebuffer.set_current_color(0xc35817);
+    framebuffer.set_background_color(0x717171);
 
     let mut data = init(framebuffer_width, framebuffer_height);
     render(&mut framebuffer, &data);
@@ -93,8 +92,8 @@ fn main() {
                     let y_delta = PLAYER_SPEED * data.player.orientation.sin();
                     Some(Message::Move(nalgebra_glm::Vec2::new(-x_delta, -y_delta)))
                 }
-                Key::A => Some(Message::Rotate(-PLAYER_ROTATION_SPEED)),
-                Key::D => Some(Message::Rotate(PLAYER_ROTATION_SPEED)),
+                Key::A => Some(Message::Rotate(-PLAYER_ROTATION_SPEED * 10.0)),
+                Key::D => Some(Message::Rotate(PLAYER_ROTATION_SPEED * 10.0)),
                 Key::M => {
                     if mode_cooldown_timer == 0 {
                         mode_cooldown_timer = mode_cooldown;
@@ -320,17 +319,29 @@ fn render(framebuffer: &mut Framebuffer, data: &Model) {
         }
         GameMode::ThreeD => {
             let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
-            let player = &data.player;
             let num_rays = framebuffer_width;
+
             let _half_width = framebuffer_width as f32 / 2.0;
             let half_height = framebuffer_height as f32 / 2.0;
+            let player = &data.player;
 
+            // Render sky and ground
+            for i in 0..(framebuffer_width) {
+                let ground_color = 0x383838;
+                framebuffer.set_current_color(ground_color);
+                for j in (half_height as usize)..framebuffer_height {
+                    let _ =
+                        framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, j as f32, 0.0));
+                }
+            }
+
+            // Render 3D Screen...
             for i in 0..num_rays {
                 let current_ray = i as f32 / num_rays as f32;
                 let orientation =
                     player.orientation - (player.fov / 2.0) + (player.fov * current_ray);
 
-                let intersect = cast_ray_3d(framebuffer, &data.board, player, orientation, false);
+                let intersect = cast_ray_3d(framebuffer, &data.board, player, orientation);
                 let color = from_char_to_color(&intersect.impact);
                 framebuffer.set_current_color(color);
 
@@ -361,7 +372,6 @@ fn cast_ray_3d(
     maze: &Board,
     player: &Player,
     orientation: f32,
-    should_draw: bool,
 ) -> Intersect {
     let mut distance = 0.0;
 
@@ -372,11 +382,6 @@ fn cast_ray_3d(
 
         let x = player.position.x + cos;
         let y = player.position.y + sin;
-        let position = nalgebra_glm::Vec2::new(x, y);
-
-        if should_draw {
-            let _ = framebuffer.paint_point(vec2_to_vec3(&position));
-        }
 
         // println!("Checking cords at: {}, {}", x, y);
 
