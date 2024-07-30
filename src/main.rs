@@ -1,4 +1,3 @@
-
 use hornystein::color::Color;
 use hornystein::framebuffer::{self, Framebuffer};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
@@ -71,7 +70,10 @@ fn main() {
     render(&mut framebuffer, &data);
 
     let mut previous_mouse_x = None;
+    let mode_cooldown = 5;
+    let mut mode_cooldown_timer = 0;
     while window.is_open() {
+        mode_cooldown_timer = (mode_cooldown_timer - 1).max(0);
         // listen to inputs
         if window.is_key_down(Key::Escape) {
             break;
@@ -93,7 +95,14 @@ fn main() {
                 }
                 Key::A => Some(Message::Rotate(-PLAYER_ROTATION_SPEED)),
                 Key::D => Some(Message::Rotate(PLAYER_ROTATION_SPEED)),
-                Key::M => Some(Message::TogleMode),
+                Key::M => {
+                    if mode_cooldown_timer == 0 {
+                        mode_cooldown_timer = mode_cooldown;
+                        Some(Message::TogleMode)
+                    } else {
+                        None
+                    }
+                }
                 _ => None,
             })
             .collect();
