@@ -1,8 +1,34 @@
 pub mod bmp;
 pub mod color;
 pub mod framebuffer;
+pub mod raycaster;
+pub mod render;
+
 extern crate nalgebra_glm as glm;
 
 pub fn are_equal(first: f32, second: f32, eps: f32) -> bool {
     (first - second).abs() <= eps
+}
+
+pub struct Board {
+    pub cells: Vec<Vec<char>>,
+    pub cell_dimensions: (f32, f32),
+}
+
+pub enum GameMode {
+    TwoD,
+    ThreeD,
+}
+
+pub struct Model {
+    pub board: Board,
+    pub framebuffer_dimensions: (usize, usize),
+    pub player: Player,
+    pub mode: GameMode,
+}
+
+pub struct Player {
+    pub position: nalgebra_glm::Vec2,
+    pub orientation: f32,
+    pub fov: f32,
 }
