@@ -2,6 +2,7 @@ use render::GameTextures;
 
 pub mod bmp;
 pub mod color;
+pub mod enemies;
 pub mod framebuffer;
 pub mod raycaster;
 pub mod render;
@@ -13,8 +14,19 @@ pub fn are_equal(first: f32, second: f32, eps: f32) -> bool {
     (first - second).abs() <= eps
 }
 
+#[derive(PartialEq, Eq, Clone)]
+pub enum BoardCell {
+    Empty,
+    Player,
+    Goal,
+    LoliBunny(enemies::LoliBunny),
+    HorizontalWall,
+    VerticalWall,
+    PillarWall,
+}
+
 pub struct Board {
-    pub cells: Vec<Vec<char>>,
+    pub cells: Vec<Vec<BoardCell>>,
     pub cell_dimensions: (f32, f32),
 }
 
@@ -29,10 +41,17 @@ pub struct Model {
     pub player: Player,
     pub mode: GameMode,
     pub textures: GameTextures,
+    pub lolibunnies: Vec<enemies::LoliBunny>,
 }
 
 pub struct Player {
     pub position: nalgebra_glm::Vec2,
     pub orientation: f32,
     pub fov: f32,
+}
+
+pub enum Message {
+    Move(nalgebra_glm::Vec2),
+    Rotate(f32),
+    TogleMode,
 }

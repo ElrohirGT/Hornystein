@@ -1,6 +1,6 @@
-use hornystein::framebuffer;
 use hornystein::render::{render, GameTextures};
-use hornystein::{Board, GameMode, Model, Player};
+use hornystein::{framebuffer, BoardCell};
+use hornystein::{Board, GameMode, Message, Model, Player};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use mouse_rs::types::Point;
 use mouse_rs::Mouse;
@@ -9,12 +9,6 @@ use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::{Duration, Instant};
-
-enum Message {
-    Move(nalgebra_glm::Vec2),
-    Rotate(f32),
-    TogleMode,
-}
 
 const PLAYER_SPEED: f32 = 1.5;
 const PLAYER_ROTATION_SPEED: f32 = 0.005;
@@ -151,13 +145,28 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
     let file = File::open(file_name).expect("Couldn't open file!");
     let reader = BufReader::new(file);
 
-    let cells: Vec<Vec<char>> = reader
+    let cells: Vec<Vec<BoardCell>> = reader
         .lines()
         .filter_map(|line| {
             let line = line.unwrap();
             match line.trim() {
                 "" => None,
-                not_empty => Some(not_empty.chars().collect()),
+                not_empty => Some(
+                    not_empty
+                        .chars()
+                        .filter_map(|c| {
+                            Some(match c {
+                                '|' => BoardCell::VerticalWall,
+                                '-' => BoardCell::HorizontalWall,
+                                '+' => BoardCell::PillarWall,
+                                'g' => BoardCell::Goal,
+                                'p' => BoardCell::Player,
+                                ' ' => BoardCell::Empty,
+                                _ => return None,
+                            })
+                        })
+                        .collect(),
+                ),
             }
         })
         .collect();
@@ -185,19 +194,21 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
 
     let mode = GameMode::ThreeD;
 
+    let lolibunnies = vec![];
     Model {
         board,
         player,
         mode,
         textures,
+        lolibunnies,
         framebuffer_dimensions: (framebuffer_width, framebuffer_height),
     }
 }
 
-fn extract_player_starting_position(cells: &[Vec<char>]) -> nalgebra_glm::Vec2 {
+fn extract_player_starting_position(cells: &[Vec<BoardCell>]) -> nalgebra_glm::Vec2 {
     for (j, row) in cells.iter().enumerate() {
         for (i, cell) in row.iter().enumerate() {
-            if cell == &'p' {
+            if cell == &BoardCell::Player {
                 return nalgebra_glm::Vec2::new(i as f32, j as f32);
             }
         }
@@ -206,8 +217,11 @@ fn extract_player_starting_position(cells: &[Vec<char>]) -> nalgebra_glm::Vec2 {
     nalgebra_glm::Vec2::zeros()
 }
 
-pub fn is_border(c: &char) -> bool {
-    matches!(c, '+' | '|' | '-')
+pub fn is_border(c: &BoardCell) -> bool {
+    matches!(
+        c,
+        BoardCell::VerticalWall | BoardCell::HorizontalWall | BoardCell::PillarWall
+    )
 }
 
 fn update(data: Model, msg: Message) -> Model {

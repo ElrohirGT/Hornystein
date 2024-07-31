@@ -1,22 +1,18 @@
 use nalgebra_glm::vec2_to_vec3;
 
-use crate::{framebuffer::Framebuffer, Board, Player};
+use crate::{framebuffer::Framebuffer, Board, BoardCell, Model, Player};
 
 pub struct Intersect {
     pub distance: f32,
-    pub impact: char,
+    pub impact: BoardCell,
     pub bx: f32,
 }
 
-pub fn cast_ray_3d(
-    framebuffer: &mut Framebuffer,
-    maze: &Board,
-    player: &Player,
-    orientation: f32,
-) -> Intersect {
+pub fn cast_ray_3d(framebuffer: &mut Framebuffer, data: &Model, orientation: f32) -> Intersect {
     let mut distance = 0.0;
 
     framebuffer.set_current_color(0x000000);
+    let Model { board, player, .. } = data;
     loop {
         let cos = distance * orientation.cos();
         let sin = distance * orientation.sin();
@@ -26,11 +22,11 @@ pub fn cast_ray_3d(
 
         // println!("Checking cords at: {}, {}", x, y);
 
-        let i = (x / maze.cell_dimensions.0) as usize;
-        let j = (y / maze.cell_dimensions.1) as usize;
-        let cell = maze.cells[j][i];
+        let i = (x / board.cell_dimensions.0) as usize;
+        let j = (y / board.cell_dimensions.1) as usize;
+        let cell = &board.cells[j][i];
 
-        let (block_width, block_height) = maze.cell_dimensions;
+        let (block_width, block_height) = board.cell_dimensions;
 
         let hitx = x - i as f32 * block_width;
         let hity = y - j as f32 * block_height;
@@ -43,12 +39,15 @@ pub fn cast_ray_3d(
         };
 
         // println!("Checking cell [{}] at: {}, {}", cell, x, y);
-        if cell == '+' || cell == '-' || cell == '|' {
-            return Intersect {
-                distance,
-                impact: cell,
-                bx,
-            };
+        match cell {
+            BoardCell::HorizontalWall | BoardCell::VerticalWall | BoardCell::PillarWall => {
+                return Intersect {
+                    distance,
+                    impact: cell.clone(),
+                    bx,
+                }
+            }
+            _ => {}
         }
 
         distance += 1.0;
@@ -73,11 +72,14 @@ pub fn cast_ray_2d(framebuffer: &mut Framebuffer, maze: &Board, player: &Player,
 
         let i = (x / maze.cell_dimensions.0) as usize;
         let j = (y / maze.cell_dimensions.1) as usize;
-        let cell = maze.cells[j][i];
+        let cell = &maze.cells[j][i];
 
         // println!("Checking cell [{}] at: {}, {}", cell, x, y);
-        if cell == '+' || cell == '-' || cell == '|' {
-            return;
+        match cell {
+            BoardCell::HorizontalWall | BoardCell::VerticalWall | BoardCell::PillarWall => {
+                return;
+            }
+            _ => {}
         }
 
         d += 1.0;

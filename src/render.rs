@@ -5,7 +5,7 @@ use crate::{
     framebuffer::Framebuffer,
     raycaster::{cast_ray_2d, cast_ray_3d},
     texture::Texture,
-    GameMode, Model,
+    BoardCell, GameMode, Model,
 };
 
 pub struct GameTextures {
@@ -32,20 +32,19 @@ impl GameTextures {
     }
 }
 
-fn from_char_to_texture<'a>(c: &char, textures: &'a GameTextures) -> Option<&'a Texture> {
+fn from_char_to_texture<'a>(c: &BoardCell, textures: &'a GameTextures) -> Option<&'a Texture> {
     match c {
-        '-' => Some(&textures.horizontal_wall),
-        '|' => Some(&textures.vertical_wall),
-        '+' => Some(&textures.corner_wall),
+        BoardCell::HorizontalWall => Some(&textures.horizontal_wall),
+        BoardCell::VerticalWall => Some(&textures.vertical_wall),
+        BoardCell::PillarWall => Some(&textures.corner_wall),
         _ => None,
     }
 }
 
-fn from_char_to_color(c: &char) -> Color {
+fn from_cell_to_color(c: &BoardCell) -> Color {
     match c {
-        '|' | '+' | '-' => 0xff00ff,
-        // 'p' => 0x00008b,
-        'g' => 0x8b0000,
+        BoardCell::Goal => 0x8b0000,
+        BoardCell::HorizontalWall | BoardCell::VerticalWall | BoardCell::PillarWall => 0xff00ff,
         _ => 0xffffff,
     }
     .into()
@@ -78,7 +77,7 @@ fn render2d(framebuffer: &mut Framebuffer, data: &Model) {
             let end_x = current_x + maze_cell_width;
             let end_y = start_y + maze_cell_height;
 
-            let color = from_char_to_color(char);
+            let color = from_cell_to_color(char);
             framebuffer.set_current_color(color);
 
             while current_x < end_x {
@@ -126,7 +125,7 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
         let current_ray = i as f32 / num_rays as f32;
         let orientation = player.orientation - (player.fov / 2.0) + (player.fov * current_ray);
 
-        let intersect = cast_ray_3d(framebuffer, &data.board, player, orientation);
+        let intersect = cast_ray_3d(framebuffer, data, orientation);
 
         let distance_to_wall = intersect.distance;
         let distance_to_projection_plane = 6.0 * std::f32::consts::PI;
@@ -146,7 +145,7 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
                     let tx = intersect.bx * texture.width as f32;
                     texture.get_pixel_color(tx as u32, ty as u32)
                 }
-                None => from_char_to_color(&intersect.impact),
+                None => from_cell_to_color(&intersect.impact),
             };
             framebuffer.set_current_color(color);
             let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, y as f32, 0.0));
