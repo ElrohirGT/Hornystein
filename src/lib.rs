@@ -42,6 +42,7 @@ pub struct Model {
     pub mode: GameMode,
     pub textures: GameTextures,
     pub lolibunnies: Vec<enemies::LoliBunny>,
+    pub moon_phase: f32,
 }
 
 pub struct Player {
@@ -54,4 +55,5 @@ pub enum Message {
     Move(nalgebra_glm::Vec2),
     Rotate(f32),
     TogleMode,
+    TickMoon,
 }

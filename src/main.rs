@@ -1,5 +1,5 @@
 use hornystein::enemies::LoliBunny;
-use hornystein::render::{render, GameTextures};
+use hornystein::render::{init_render, render, GameTextures};
 use hornystein::{framebuffer, BoardCell};
 use hornystein::{Board, GameMode, Message, Model, Player};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
@@ -37,28 +37,8 @@ fn main() {
     let target_framerate = 60;
     let frame_delay = Duration::from_millis(1000 / target_framerate);
 
-    // Render sky
-    let half_height = framebuffer_height / 2;
-    let ground_color = 0x0098de;
-    framebuffer.set_current_color(ground_color);
-    for i in 0..(framebuffer_width) {
-        for j in 0..half_height {
-            let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, j as f32, 0.0));
-        }
-    }
-
-    // Render ground
-    let ground_color = 0x058a00;
-    framebuffer.set_current_color(ground_color);
-    for i in 0..(framebuffer_width) {
-        for j in half_height..framebuffer_height {
-            let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, j as f32, 0.0));
-        }
-    }
-    framebuffer.save_as_background();
-
     let mut data = init(framebuffer_width, framebuffer_height);
-    render(&mut framebuffer, &data);
+    init_render(&mut framebuffer, &data);
 
     let mut previous_mouse_x = None;
     let mode_cooldown = 5;
@@ -101,6 +81,7 @@ fn main() {
                 _ => None,
             })
             .collect();
+        messages.push(Message::TickMoon);
 
         previous_mouse_x = match previous_mouse_x {
             Some(previous_x) => mouse.get_position().ok().map(|Point { x, y }| {
@@ -154,7 +135,7 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
     let mut args = env::args();
     args.next();
 
-    let file_name = args.next().expect("No file name received!");
+    let file_name = args.next().expect("No maze file name received!");
     println!("Reading file name: {}", file_name);
 
     let texture_dir = args.next().expect("No asset dir received!");
@@ -162,7 +143,7 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
 
     let textures = GameTextures::new(&texture_dir);
 
-    let file = File::open(file_name).expect("Couldn't open file!");
+    let file = File::open(file_name).expect("Couldn't open maze file!");
     let reader = BufReader::new(file);
 
     let cells: Vec<Vec<BoardCell>> = reader
@@ -224,6 +205,7 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
         textures,
         lolibunnies,
         framebuffer_dimensions: (framebuffer_width, framebuffer_height),
+        moon_phase: 0.0,
     }
 }
 
@@ -247,7 +229,12 @@ pub fn is_border(c: &BoardCell) -> bool {
 }
 
 fn update(data: Model, msg: Message) -> Model {
-    let Model { player, mode, .. } = data;
+    let Model {
+        player,
+        mode,
+        moon_phase,
+        ..
+    } = data;
 
     match msg {
         Message::Move(delta) => {
@@ -287,6 +274,15 @@ fn update(data: Model, msg: Message) -> Model {
             Model {
                 player,
                 mode,
+                ..data
+            }
+        }
+        Message::TickMoon => {
+            let moon_phase = (moon_phase + 5e-4).min(1.0);
+            Model {
+                player,
+                mode,
+                moon_phase,
                 ..data
             }
         }

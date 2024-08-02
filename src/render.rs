@@ -1,8 +1,10 @@
+use std::isize;
+
 use nalgebra_glm::vec2_to_vec3;
 
 use crate::{
     color::Color,
-    framebuffer::Framebuffer,
+    framebuffer::{self, Framebuffer},
     raycaster::{cast_ray_2d, cast_ray_3d},
     texture::Texture,
     BoardCell, GameMode, Model,
@@ -52,6 +54,32 @@ fn from_cell_to_color(c: &BoardCell) -> Color {
         _ => 0xffffff,
     }
     .into()
+}
+
+pub fn init_render(framebuffer: &mut Framebuffer, data: &Model) {
+    let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
+
+    // Render sky
+    let half_height = framebuffer_height / 2;
+    let color = 0x00000f;
+    framebuffer.set_current_color(color);
+    for i in 0..(framebuffer_width) {
+        for j in 0..half_height {
+            let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, j as f32, 0.0));
+        }
+    }
+
+    // Render ground
+    let color = 0x140d00;
+    framebuffer.set_current_color(color);
+    for i in 0..(framebuffer_width) {
+        for j in half_height..framebuffer_height {
+            let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, j as f32, 0.0));
+        }
+    }
+    framebuffer.save_as_background();
+
+    render(framebuffer, data);
 }
 
 pub fn render(framebuffer: &mut Framebuffer, data: &Model) {
@@ -123,7 +151,7 @@ fn render2d(framebuffer: &mut Framebuffer, data: &Model) {
 
 fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
     let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
-    let num_rays = framebuffer_width;
+    render_moon(framebuffer, &data.moon_phase);
 
     let _half_width = framebuffer_width as f32 / 2.0;
     let half_height = framebuffer_height as f32 / 2.0;
@@ -132,6 +160,7 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
     let mut z_buffer = vec![f32::INFINITY; framebuffer_width];
 
     // Render 3D Screen...
+    let num_rays = framebuffer_width;
     (0..num_rays).for_each(|i| {
         let current_ray = i as f32 / num_rays as f32;
         let orientation = player.orientation - (player.fov / 2.0) + (player.fov * current_ray);
@@ -169,6 +198,30 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
 
     // Render enemies
     render_lolibunny(framebuffer, data, &z_buffer);
+}
+
+fn render_moon(framebuffer: &mut Framebuffer, moon_phase: &f32) {
+    let radius = 100.0;
+    let center_x = moon_phase * framebuffer.width as f32;
+
+    let center_y = 0.0005 * (center_x - framebuffer.width as f32 / 2.0).powi(2) + 100.0;
+
+    let start_x = (center_x - radius) as isize;
+    let start_y = (center_y - radius) as isize;
+
+    let end_x = (center_x + radius) as isize;
+    let end_y = (center_y + radius) as isize;
+
+    framebuffer.set_current_color(0xffffff);
+    for x in start_x..end_x {
+        for y in start_y..end_y {
+            let distance_to_center =
+                ((x as f32 - center_x).powi(2) + (y as f32 - center_y).powi(2)).sqrt();
+            if distance_to_center <= radius {
+                let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
+            }
+        }
+    }
 }
 
 fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model, z_buffer: &[f32]) {

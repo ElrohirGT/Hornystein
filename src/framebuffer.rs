@@ -4,8 +4,8 @@ use crate::{are_equal, bmp::write_bmp_file, color::Color};
 
 #[derive(Debug)]
 pub struct Framebuffer {
-    width: usize,
-    height: usize,
+    pub width: usize,
+    pub height: usize,
     pub buffer: Buffer,
     background_color: Color,
     current_color: Color,
