@@ -1,5 +1,5 @@
 /// Represents a Color to print in the screen.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Color {
     pub r: u8,
     pub g: u8,

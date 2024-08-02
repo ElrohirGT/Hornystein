@@ -1,5 +1,3 @@
-use std::usize;
-
 use nalgebra_glm::vec2_to_vec3;
 
 use crate::{
@@ -14,6 +12,7 @@ pub struct GameTextures {
     pub horizontal_wall: Texture,
     pub vertical_wall: Texture,
     pub corner_wall: Texture,
+    pub lolibunny: Texture,
 }
 
 impl GameTextures {
@@ -21,15 +20,18 @@ impl GameTextures {
         let horizontal_wall = format!("{}{}", asset_dir, "small_wall.jpg");
         let vertical_wall = format!("{}{}", asset_dir, "large_wall.jpg");
         let corner_wall = format!("{}{}", asset_dir, "corner.jpg");
+        let lolibunny = format!("{}{}", asset_dir, "lolibunny.jpg");
 
         let horizontal_wall = Texture::new(&horizontal_wall);
         let vertical_wall = Texture::new(&vertical_wall);
         let corner_wall = Texture::new(&corner_wall);
+        let lolibunny = Texture::new(&lolibunny);
 
         GameTextures {
             horizontal_wall,
             vertical_wall,
             corner_wall,
+            lolibunny,
         }
     }
 }
@@ -165,20 +167,18 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
 
 fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model) {
     let Model {
-        board,
-        framebuffer_dimensions,
         player,
-        mode,
-        textures,
         lolibunnies,
+        textures,
+        ..
     } = data;
     lolibunnies.iter().for_each(|enemy| {
         let sprite_a =
             (enemy.position.y - player.position.y).atan2(enemy.position.x - player.position.x);
 
-        // if sprite_a < 0.0 {
-        //     return;
-        // }
+        if sprite_a < 0.0 {
+            return;
+        }
 
         let sprite_distance = ((player.position.x - enemy.position.x).powi(2)
             + (player.position.y - enemy.position.y).powi(2))
@@ -188,10 +188,10 @@ fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model) {
         let framebuffer_height = framebuffer_height as f32;
         let framebuffer_width = framebuffer_width as f32;
 
-        let sprite_width = 100.0;
-        let sprite_height = 100.0;
+        let sprite_width = textures.lolibunny.width as f32;
+        let sprite_height = textures.lolibunny.height as f32;
 
-        let sprite_ratio = 1.0; // width / height
+        let sprite_ratio = sprite_width / sprite_height; // width / height
         let rendered_sprite_height = (framebuffer_height / sprite_distance) * 20.0;
         let rendered_sprite_width = rendered_sprite_height * sprite_ratio;
         let start_y = ((framebuffer_height / 2.0) - (rendered_sprite_height / 2.0)) as isize;
@@ -207,7 +207,7 @@ fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model) {
                 let tx = (x as f32 - start_x as f32) * sprite_width / rendered_sprite_width;
                 let ty = (y as f32 - start_y as f32) * sprite_height / rendered_sprite_height;
 
-                let color = 0xffff00;
+                let color = textures.lolibunny.get_pixel_color(tx as u32, ty as u32);
                 framebuffer.set_current_color(color);
                 let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
             }

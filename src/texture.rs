@@ -1,11 +1,11 @@
-use image::{DynamicImage, GenericImageView, ImageReader, Pixel};
+use image::{GenericImageView, ImageReader, Pixel};
 
 use crate::color::Color;
 
 pub struct Texture {
-    image: DynamicImage,
     pub width: u32,
     pub height: u32,
+    colors: Vec<Color>,
 }
 
 impl Texture {
@@ -14,20 +14,30 @@ impl Texture {
         let width = image.width();
         let height = image.height();
 
+        let size = width * height;
+        let mut colors = vec![0xffffff.into(); size as usize];
+
+        for x in 0..width {
+            for y in 0..height {
+                let pixel = image.get_pixel(x, y).to_rgb();
+                let r = pixel[0];
+                let g = pixel[1];
+                let b = pixel[2];
+
+                let idx = y * width + x;
+                colors[idx as usize] = Color { r, g, b };
+            }
+        }
+
         Texture {
-            image,
             width,
             height,
+            colors,
         }
     }
 
     pub fn get_pixel_color(&self, x: u32, y: u32) -> Color {
-        let pixel = self.image.get_pixel(x, y).to_rgb();
-        let r = pixel[0] as u32;
-        let g = pixel[1] as u32;
-        let b = pixel[2] as u32;
-
-        ((r << 16) | (g << 8) | b).into()
-        // Color { r, g, b}
+        let idx = y * self.width + x;
+        self.colors[idx as usize]
     }
 }
