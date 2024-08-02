@@ -7,11 +7,6 @@ pub struct AudioPlayer {
     pub background: Track,
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
-pub enum Audios {
-    Background,
-}
-
 pub struct Track {
     path: String,
     pub sink: Sink,
