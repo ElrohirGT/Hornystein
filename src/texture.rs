@@ -17,6 +17,8 @@ impl Texture {
         let size = width * height;
         let mut colors = vec![0xffffff.into(); size as usize];
 
+        // If I use flatmap and all that this get's reordered...
+        // I don't know why
         for x in 0..width {
             for y in 0..height {
                 let pixel = image.get_pixel(x, y).to_rgb();

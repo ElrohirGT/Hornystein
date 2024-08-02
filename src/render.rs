@@ -1,5 +1,3 @@
-use std::usize;
-
 use nalgebra_glm::vec2_to_vec3;
 
 use crate::{
