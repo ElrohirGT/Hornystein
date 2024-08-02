@@ -1,5 +1,7 @@
+use audio::AudioPlayer;
 use render::GameTextures;
 
+pub mod audio;
 pub mod bmp;
 pub mod color;
 pub mod enemies;
@@ -41,6 +43,7 @@ pub struct Model {
     pub player: Player,
     pub mode: GameMode,
     pub textures: GameTextures,
+    pub audio_player: AudioPlayer,
     pub lolibunnies: Vec<enemies::LoliBunny>,
     pub moon_phase: f32,
 }

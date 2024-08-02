@@ -1,3 +1,4 @@
+use hornystein::audio::AudioPlayer;
 use hornystein::enemies::LoliBunny;
 use hornystein::render::{init_render, render, GameTextures};
 use hornystein::{framebuffer, BoardCell};
@@ -38,6 +39,7 @@ fn main() {
     let frame_delay = Duration::from_millis(1000 / target_framerate);
 
     let mut data = init(framebuffer_width, framebuffer_height);
+    data.audio_player.background.play();
     init_render(&mut framebuffer, &data);
 
     let mut previous_mouse_x = None;
@@ -138,10 +140,13 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
     let file_name = args.next().expect("No maze file name received!");
     println!("Reading file name: {}", file_name);
 
-    let texture_dir = args.next().expect("No asset dir received!");
-    println!("Loading textures from: {}...", file_name);
+    let assets_dir = args.next().expect("No asset dir received!");
 
-    let textures = GameTextures::new(&texture_dir);
+    println!("Loading textures from: {}...", file_name);
+    let textures = GameTextures::new(&assets_dir);
+
+    println!("Loading audios from: {}...", file_name);
+    let audio_player = AudioPlayer::new(&assets_dir);
 
     let file = File::open(file_name).expect("Couldn't open maze file!");
     let reader = BufReader::new(file);
@@ -198,11 +203,13 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
     let lolibunnies = vec![LoliBunny {
         position: nalgebra_glm::Vec2::new(250.0, 250.0),
     }];
+
     Model {
         board,
         player,
         mode,
         textures,
+        audio_player,
         lolibunnies,
         framebuffer_dimensions: (framebuffer_width, framebuffer_height),
         moon_phase: 0.0,
