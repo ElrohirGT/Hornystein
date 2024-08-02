@@ -111,15 +111,6 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
     let half_height = framebuffer_height as f32 / 2.0;
     let player = &data.player;
 
-    // Render ground
-    for i in 0..(framebuffer_width) {
-        let ground_color = 0x058a00;
-        framebuffer.set_current_color(ground_color);
-        for j in (half_height as usize)..framebuffer_height {
-            let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, j as f32, 0.0));
-        }
-    }
-
     // Render 3D Screen...
     for i in 0..num_rays {
         let current_ray = i as f32 / num_rays as f32;

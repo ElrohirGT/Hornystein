@@ -1,3 +1,4 @@
+use hornystein::enemies::LoliBunny;
 use hornystein::render::{render, GameTextures};
 use hornystein::{framebuffer, BoardCell};
 use hornystein::{Board, GameMode, Message, Model, Player};
@@ -35,7 +36,26 @@ fn main() {
 
     let target_framerate = 60;
     let frame_delay = Duration::from_millis(1000 / target_framerate);
-    framebuffer.set_background_color(0x0098de);
+
+    // Render sky
+    let half_height = framebuffer_height / 2;
+    let ground_color = 0x0098de;
+    framebuffer.set_current_color(ground_color);
+    for i in 0..(framebuffer_width) {
+        for j in 0..half_height {
+            let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, j as f32, 0.0));
+        }
+    }
+
+    // Render ground
+    let ground_color = 0x058a00;
+    framebuffer.set_current_color(ground_color);
+    for i in 0..(framebuffer_width) {
+        for j in half_height..framebuffer_height {
+            let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, j as f32, 0.0));
+        }
+    }
+    framebuffer.save_as_background();
 
     let mut data = init(framebuffer_width, framebuffer_height);
     render(&mut framebuffer, &data);
@@ -194,7 +214,7 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
 
     let mode = GameMode::ThreeD;
 
-    let lolibunnies = vec![];
+    let lolibunnies = vec![LoliBunny {}];
     Model {
         board,
         player,

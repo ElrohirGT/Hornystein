@@ -43,14 +43,16 @@ impl Framebuffer {
     pub fn new(width: usize, height: usize) -> Self {
         let background_color = Color::black();
         let current_color = Color::white();
+        let empty_buffer = create_filled_buffer(&width, &height, &Color::black());
+        let buffer = empty_buffer.clone();
 
         Framebuffer {
             width,
             height,
-            buffer: vec![],
+            buffer,
             background_color,
             current_color,
-            empty_buffer: create_filled_buffer(&width, &height, &Color::black()),
+            empty_buffer,
         }
     }
 
@@ -59,6 +61,12 @@ impl Framebuffer {
     /// The implementation of this method assumes the background color will not change that much.
     pub fn clear(&mut self) {
         self.buffer.clone_from(&self.empty_buffer)
+    }
+
+    /// Saves the current framebuffer as a background.
+    /// This makes it so every time we clear it get's cleared with this instead.
+    pub fn save_as_background(&mut self) {
+        self.empty_buffer.clone_from(&self.buffer)
     }
 
     /// Colors a point in the given location. Rounds x and y.
@@ -176,7 +184,7 @@ impl Framebuffer {
     }
 
     /// Sets the `background_color` property.
-    /// This method should also regenerate the `empty_buffer`.
+    /// This method regenerates the framebuffer used as background.
     ///
     /// * `new_color`: The color to apply.
     pub fn set_background_color(&mut self, new_color: impl Into<Color>) {
