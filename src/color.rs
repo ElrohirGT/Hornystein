@@ -17,6 +17,15 @@ impl Color {
     pub fn white() -> Self {
         Color::new(u8::MAX, u8::MAX, u8::MAX)
     }
+
+    pub fn change_brightness_by(&self, factor: f32) -> Self {
+        let Color { r, g, b } = self;
+        let r = (*r as f32 * factor).round() as u8;
+        let g = (*g as f32 * factor).round() as u8;
+        let b = (*b as f32 * factor).round() as u8;
+
+        Color { r, g, b }
+    }
 }
 
 /// Converts from a hex u32 into a `Color`.

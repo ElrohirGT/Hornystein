@@ -34,6 +34,7 @@ impl std::fmt::Display for PaintPointErrors {
 }
 impl std::error::Error for PaintPointErrors {}
 
+#[derive(Debug)]
 pub enum GetColorErrors {
     XTooLarge,
     YTooLarge,

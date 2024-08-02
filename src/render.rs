@@ -1,4 +1,4 @@
-use std::isize;
+use std::{isize, usize};
 
 use nalgebra_glm::vec2_to_vec3;
 
@@ -181,6 +181,9 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
         let stake_bottom = (half_height + (stake_height / 2.0)) as usize;
 
         for y in stake_top..stake_bottom {
+            let distance_from_center = ((framebuffer.width as f32 / 2.0 - i as f32).powi(2)
+                + (framebuffer.height as f32 / 2.0 - y as f32).powi(2))
+            .sqrt();
             let color = match from_char_to_texture(&intersect.impact, &data.textures) {
                 Some(texture) => {
                     // Calculate tx and ty.
@@ -191,13 +194,24 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
                 }
                 None => from_cell_to_color(&intersect.impact),
             };
-            framebuffer.set_current_color(color);
+
+            framebuffer.set_current_color(apply_lantern_effect(
+                &color,
+                distance_from_center,
+                framebuffer_width as f32,
+            ));
+
+            // framebuffer.set_current_color(color);
             let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, y as f32, 0.0));
         }
     });
 
     // Render enemies
     render_lolibunny(framebuffer, data, &z_buffer);
+}
+
+fn apply_lantern_effect(color: &Color, distance_from_center: f32, framebuffer_width: f32) -> Color {
+    color.change_brightness_by((framebuffer_width / distance_from_center - 5.0).min(1.0))
 }
 
 fn render_moon(framebuffer: &mut Framebuffer, moon_phase: &f32) {
@@ -235,10 +249,6 @@ fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model, z_buffer: &[f32
         let sprite_a =
             (enemy.position.y - player.position.y).atan2(enemy.position.x - player.position.x);
 
-        if sprite_a < 0.0 {
-            return;
-        }
-
         let sprite_distance = ((player.position.x - enemy.position.x).powi(2)
             + (player.position.y - enemy.position.y).powi(2))
         .sqrt();
@@ -270,7 +280,14 @@ fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model, z_buffer: &[f32
                 let ty = (y as f32 - start_y as f32) * sprite_height / rendered_sprite_height;
 
                 let color = textures.lolibunny.get_pixel_color(tx as u32, ty as u32);
-                framebuffer.set_current_color(color);
+                let distance_from_center = ((x as f32 - framebuffer_width / 2.0).powi(2)
+                    + (y as f32 - framebuffer_height / 2.0).powi(2))
+                .sqrt();
+                framebuffer.set_current_color(apply_lantern_effect(
+                    &color,
+                    distance_from_center,
+                    framebuffer_width,
+                ));
                 let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
             }
         }
