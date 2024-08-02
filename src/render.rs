@@ -1,3 +1,5 @@
+use std::usize;
+
 use nalgebra_glm::vec2_to_vec3;
 
 use crate::{
@@ -99,6 +101,20 @@ fn render2d(framebuffer: &mut Framebuffer, data: &Model) {
         cast_ray_2d(framebuffer, &data.board, &data.player, a);
     }
 
+    framebuffer.set_current_color(0xffff00);
+    let half_height = 5;
+    let half_width = 5;
+    for bunny in &data.lolibunnies {
+        let start_x = (bunny.position.x - half_width as f32) as usize;
+        let start_y = (bunny.position.y - half_height as f32) as usize;
+
+        for x in start_x..(start_x + half_width * 2) {
+            for y in start_y..(start_y + half_height * 2) {
+                let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
+            }
+        }
+    }
+
     framebuffer.set_current_color(0x0000ff);
     let _ = framebuffer.paint_point(vec2_to_vec3(&data.player.position));
 }
@@ -142,4 +158,59 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
             let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, y as f32, 0.0));
         }
     }
+
+    // Render enemies
+    render_lolibunny(framebuffer, data);
+}
+
+fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model) {
+    let Model {
+        board,
+        framebuffer_dimensions,
+        player,
+        mode,
+        textures,
+        lolibunnies,
+    } = data;
+    lolibunnies.iter().for_each(|enemy| {
+        let sprite_a =
+            (enemy.position.y - player.position.y).atan2(enemy.position.x - player.position.x);
+
+        // if sprite_a < 0.0 {
+        //     return;
+        // }
+
+        let sprite_distance = ((player.position.x - enemy.position.x).powi(2)
+            + (player.position.y - enemy.position.y).powi(2))
+        .sqrt();
+
+        let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
+        let framebuffer_height = framebuffer_height as f32;
+        let framebuffer_width = framebuffer_width as f32;
+
+        let sprite_width = 100.0;
+        let sprite_height = 100.0;
+
+        let sprite_ratio = 1.0; // width / height
+        let rendered_sprite_height = (framebuffer_height / sprite_distance) * 20.0;
+        let rendered_sprite_width = rendered_sprite_height * sprite_ratio;
+        let start_y = ((framebuffer_height / 2.0) - (rendered_sprite_height / 2.0)) as isize;
+        let start_x = ((sprite_a - player.orientation) * (framebuffer_height / player.fov)
+            + (framebuffer_width / 2.0)
+            - (rendered_sprite_height / 2.0)) as isize;
+
+        let end_x = (start_x as f32 + rendered_sprite_width) as isize;
+        let end_y = (start_y as f32 + rendered_sprite_height) as isize;
+
+        for x in start_x..(end_x) {
+            for y in start_y..(end_y) {
+                let tx = (x as f32 - start_x as f32) * sprite_width / rendered_sprite_width;
+                let ty = (y as f32 - start_y as f32) * sprite_height / rendered_sprite_height;
+
+                let color = 0xffff00;
+                framebuffer.set_current_color(color);
+                let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
+            }
+        }
+    })
 }

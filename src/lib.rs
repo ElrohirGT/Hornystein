@@ -14,7 +14,7 @@ pub fn are_equal(first: f32, second: f32, eps: f32) -> bool {
     (first - second).abs() <= eps
 }
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Clone)]
 pub enum BoardCell {
     Empty,
     Player,

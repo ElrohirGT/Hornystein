@@ -214,7 +214,9 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
 
     let mode = GameMode::ThreeD;
 
-    let lolibunnies = vec![LoliBunny {}];
+    let lolibunnies = vec![LoliBunny {
+        position: nalgebra_glm::Vec2::new(250.0, 250.0),
+    }];
     Model {
         board,
         player,
