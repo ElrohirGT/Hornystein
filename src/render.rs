@@ -1,7 +1,4 @@
-use std::usize;
-
 use nalgebra_glm::vec2_to_vec3;
-use rodio::cpal::Data;
 
 use crate::{
     color::Color,
