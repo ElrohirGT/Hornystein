@@ -1,3 +1,5 @@
+use std::usize;
+
 use nalgebra_glm::vec2_to_vec3;
 
 use crate::{
@@ -129,12 +131,18 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
     let half_height = framebuffer_height as f32 / 2.0;
     let player = &data.player;
 
+    let mut z_buffer = vec![f32::INFINITY; framebuffer_width];
+
     // Render 3D Screen...
-    for i in 0..num_rays {
+    (0..num_rays).for_each(|i| {
         let current_ray = i as f32 / num_rays as f32;
         let orientation = player.orientation - (player.fov / 2.0) + (player.fov * current_ray);
 
         let intersect = cast_ray_3d(framebuffer, data, orientation);
+
+        if intersect.distance < z_buffer[i] {
+            z_buffer[i] = intersect.distance;
+        }
 
         let distance_to_wall = intersect.distance;
         let distance_to_projection_plane = 6.0 * std::f32::consts::PI;
@@ -159,13 +167,13 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
             framebuffer.set_current_color(color);
             let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, y as f32, 0.0));
         }
-    }
+    });
 
     // Render enemies
-    render_lolibunny(framebuffer, data);
+    render_lolibunny(framebuffer, data, &z_buffer);
 }
 
-fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model) {
+fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model, z_buffer: &[f32]) {
     let Model {
         player,
         lolibunnies,
@@ -192,7 +200,7 @@ fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model) {
         let sprite_height = textures.lolibunny.height as f32;
 
         let sprite_ratio = sprite_width / sprite_height; // width / height
-        let rendered_sprite_height = (framebuffer_height / sprite_distance) * 20.0;
+        let rendered_sprite_height = (framebuffer_height / sprite_distance) * 9.0;
         let rendered_sprite_width = rendered_sprite_height * sprite_ratio;
         let start_y = ((framebuffer_height / 2.0) - (rendered_sprite_height / 2.0)) as isize;
         let start_x = ((sprite_a - player.orientation) * (framebuffer_height / player.fov)
@@ -203,6 +211,9 @@ fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model) {
         let end_y = (start_y as f32 + rendered_sprite_height) as isize;
 
         for x in start_x..(end_x) {
+            if sprite_distance >= z_buffer[x.max(0).min(framebuffer_width as isize - 1) as usize] {
+                continue;
+            }
             for y in start_y..(end_y) {
                 let tx = (x as f32 - start_x as f32) * sprite_width / rendered_sprite_width;
                 let ty = (y as f32 - start_y as f32) * sprite_height / rendered_sprite_height;
