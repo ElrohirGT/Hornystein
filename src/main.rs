@@ -1,6 +1,7 @@
 use hornystein::audio::AudioPlayer;
 use hornystein::enemies::LoliBunny;
-use hornystein::render::{init_render, render, GameTextures};
+use hornystein::render::{init_render, render};
+use hornystein::texture::GameTextures;
 use hornystein::{framebuffer, BoardCell};
 use hornystein::{Board, GameMode, Message, Model, Player};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};

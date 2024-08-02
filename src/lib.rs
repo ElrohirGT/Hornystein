@@ -1,5 +1,5 @@
 use audio::AudioPlayer;
-use render::GameTextures;
+use texture::GameTextures;
 
 pub mod audio;
 pub mod bmp;

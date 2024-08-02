@@ -1,11 +1,84 @@
-use image::{GenericImageView, ImageReader, Pixel};
+use std::{fs::File, io::BufReader};
+
+use image::{
+    codecs::gif::GifDecoder, AnimationDecoder, Frame, GenericImageView, ImageDecoder, ImageReader,
+    Pixel,
+};
 
 use crate::color::Color;
+
+pub struct GameTextures {
+    pub horizontal_wall: Texture,
+    pub vertical_wall: Texture,
+    pub corner_wall: Texture,
+    pub lolibunny: Texture,
+    pub moon: AnimatedTexture,
+}
+
+impl GameTextures {
+    pub fn new(asset_dir: &str) -> Self {
+        let horizontal_wall = format!("{}{}", asset_dir, "small_wall.jpg");
+        let vertical_wall = format!("{}{}", asset_dir, "large_wall.jpg");
+        let corner_wall = format!("{}{}", asset_dir, "corner.jpg");
+        let lolibunny = format!("{}{}", asset_dir, "lolibunny.jpg");
+        let moon = format!("{}{}", asset_dir, "moon.gif");
+
+        let horizontal_wall = Texture::new(&horizontal_wall);
+        let vertical_wall = Texture::new(&vertical_wall);
+        let corner_wall = Texture::new(&corner_wall);
+        let lolibunny = Texture::new(&lolibunny);
+
+        let moon = AnimatedTexture::new(&moon);
+
+        GameTextures {
+            horizontal_wall,
+            vertical_wall,
+            corner_wall,
+            lolibunny,
+            moon,
+        }
+    }
+}
 
 pub struct Texture {
     pub width: u32,
     pub height: u32,
     colors: Vec<Color>,
+}
+
+pub struct AnimatedTexture {
+    pub width: u32,
+    pub height: u32,
+    frames: Vec<Frame>,
+    pub frame_count: usize,
+}
+
+impl AnimatedTexture {
+    pub fn new(file_path: &str) -> Self {
+        let file_in = BufReader::new(File::open(file_path).unwrap());
+        let decoder = GifDecoder::new(file_in).unwrap();
+        let (width, height) = decoder.dimensions();
+        let frames = decoder.into_frames();
+        let frames = frames.collect_frames().expect("error decoding gif");
+        let frame_count = frames.len();
+
+        Self {
+            width,
+            height,
+            frames,
+            frame_count,
+        }
+    }
+
+    /// Get's the color of the pixel positioned on the frame `t`.
+    pub fn get_pixel_color(&self, t: usize, x: u32, y: u32) -> Color {
+        let pixel = self.frames[t].buffer().get_pixel(x, y).to_rgb();
+        let r = pixel[0];
+        let g = pixel[1];
+        let b = pixel[2];
+
+        Color { r, g, b }
+    }
 }
 
 impl Texture {

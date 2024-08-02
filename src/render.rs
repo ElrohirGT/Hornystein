@@ -1,42 +1,15 @@
-use std::{isize, usize};
+use std::usize;
 
 use nalgebra_glm::vec2_to_vec3;
+use rodio::cpal::Data;
 
 use crate::{
     color::Color,
-    framebuffer::{self, Framebuffer},
+    framebuffer::Framebuffer,
     raycaster::{cast_ray_2d, cast_ray_3d},
-    texture::Texture,
+    texture::{GameTextures, Texture},
     BoardCell, GameMode, Model,
 };
-
-pub struct GameTextures {
-    pub horizontal_wall: Texture,
-    pub vertical_wall: Texture,
-    pub corner_wall: Texture,
-    pub lolibunny: Texture,
-}
-
-impl GameTextures {
-    pub fn new(asset_dir: &str) -> Self {
-        let horizontal_wall = format!("{}{}", asset_dir, "small_wall.jpg");
-        let vertical_wall = format!("{}{}", asset_dir, "large_wall.jpg");
-        let corner_wall = format!("{}{}", asset_dir, "corner.jpg");
-        let lolibunny = format!("{}{}", asset_dir, "lolibunny.jpg");
-
-        let horizontal_wall = Texture::new(&horizontal_wall);
-        let vertical_wall = Texture::new(&vertical_wall);
-        let corner_wall = Texture::new(&corner_wall);
-        let lolibunny = Texture::new(&lolibunny);
-
-        GameTextures {
-            horizontal_wall,
-            vertical_wall,
-            corner_wall,
-            lolibunny,
-        }
-    }
-}
 
 fn from_char_to_texture<'a>(c: &BoardCell, textures: &'a GameTextures) -> Option<&'a Texture> {
     match c {
@@ -151,7 +124,7 @@ fn render2d(framebuffer: &mut Framebuffer, data: &Model) {
 
 fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
     let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
-    render_moon(framebuffer, &data.moon_phase);
+    render_moon(framebuffer, data);
 
     let _half_width = framebuffer_width as f32 / 2.0;
     let half_height = framebuffer_height as f32 / 2.0;
@@ -214,7 +187,13 @@ fn apply_lantern_effect(color: &Color, distance_from_center: f32, framebuffer_wi
     color.change_brightness_by((framebuffer_width / distance_from_center - 5.0).min(1.0))
 }
 
-fn render_moon(framebuffer: &mut Framebuffer, moon_phase: &f32) {
+fn render_moon(framebuffer: &mut Framebuffer, data: &Model) {
+    let Model {
+        textures,
+        moon_phase,
+        ..
+    } = data;
+
     let radius = 100.0;
     let center_x = moon_phase * framebuffer.width as f32;
 
@@ -226,12 +205,16 @@ fn render_moon(framebuffer: &mut Framebuffer, moon_phase: &f32) {
     let end_x = (center_x + radius) as isize;
     let end_y = (center_y + radius) as isize;
 
-    framebuffer.set_current_color(0xffffff);
     for x in start_x..end_x {
         for y in start_y..end_y {
             let distance_to_center =
                 ((x as f32 - center_x).powi(2) + (y as f32 - center_y).powi(2)).sqrt();
             if distance_to_center <= radius {
+                let t_frame_idx = center_y as usize % textures.moon.frame_count;
+                let tx = (x - start_x) as u32;
+                let ty = (y - start_y) as u32;
+                let color = textures.moon.get_pixel_color(t_frame_idx, tx, ty);
+                framebuffer.set_current_color(color);
                 let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
             }
         }
