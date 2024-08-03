@@ -297,7 +297,8 @@ fn render_minimap(framebuffer: &mut Framebuffer, data: &Model) {
 }
 
 fn apply_lantern_effect(color: &Color, distance_from_center: f32, framebuffer_width: f32) -> Color {
-    color.change_brightness_by((framebuffer_width / distance_from_center - 5.0).clamp(0.2, 1.0))
+    *color
+    // color.change_brightness_by((framebuffer_width / distance_from_center - 5.0).clamp(0.2, 1.0))
 }
 
 fn render_moon(framebuffer: &mut Framebuffer, data: &Model) {

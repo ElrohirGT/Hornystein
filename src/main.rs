@@ -29,13 +29,14 @@ fn main() {
 
     let window_options = WindowOptions {
         resize: true,
+        scale: minifb::Scale::FitScreen,
         ..WindowOptions::default()
     };
 
     let mut window =
         Window::new("Hornystein", window_width, window_height, window_options).unwrap();
     window.set_key_repeat_delay(0.01);
-    window.set_cursor_visibility(false);
+    window.set_cursor_visibility(true);
     let mouse = Mouse::new();
 
     let target_framerate = 60;
@@ -98,35 +99,38 @@ fn main() {
                 _ => None,
             })
             .collect();
-        if let GameStatus::Gaming = data.status {
-            messages.push(Message::TickMoon);
-        }
         if splash_timer == splash_delay {
             messages.push(Message::EndSplash);
         }
+        if let GameStatus::Gaming = data.status {
+            window.set_cursor_visibility(false);
+            messages.push(Message::TickMoon);
 
-        previous_mouse_x = match previous_mouse_x {
-            Some(previous_x) => mouse.get_position().ok().map(|Point { x, y }| {
-                let current_x = x as f32;
-                let delta_x = current_x - previous_x;
+            previous_mouse_x = match previous_mouse_x {
+                Some(previous_x) => mouse.get_position().ok().map(|Point { x, y }| {
+                    let current_x = x as f32;
+                    let delta_x = current_x - previous_x;
 
-                messages.push(Message::Rotate(PLAYER_ROTATION_SPEED * delta_x));
+                    messages.push(Message::Rotate(PLAYER_ROTATION_SPEED * delta_x));
 
-                let (w_width, _) = window.get_size();
-                let (w_x, _) = window.get_position();
-                let w_width = w_width as f32;
-                let w_x = w_x as f32;
+                    let (w_width, _) = window.get_size();
+                    let (w_x, _) = window.get_position();
+                    let w_width = w_width as f32;
+                    let w_x = w_x as f32;
 
-                if current_x < w_x || current_x > (w_width + w_x) {
-                    let x = w_width / 2.0 + w_x;
-                    mouse.move_to(x as i32, y).expect("Unable to move mouse!");
-                    x
-                } else {
-                    current_x
-                }
-            }),
-            None => mouse.get_position().ok().map(|Point { x, .. }| x as f32),
-        };
+                    if current_x < (w_x + 10.0) || current_x > (w_width + w_x - 10.0) {
+                        let x = w_width / 2.0 + w_x;
+                        mouse.move_to(x as i32, y).expect("Unable to move mouse!");
+                        x
+                    } else {
+                        current_x
+                    }
+                }),
+                None => mouse.get_position().ok().map(|Point { x, .. }| x as f32),
+            };
+        } else {
+            window.set_cursor_visibility(true);
+        }
 
         for msg in messages {
             data = update(data, msg);
