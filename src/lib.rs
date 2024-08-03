@@ -50,6 +50,7 @@ pub struct Model {
 }
 
 pub enum GameStatus {
+    SplashScreen,
     MainMenu,
     Gaming,
     YouLost,
@@ -67,6 +68,7 @@ pub enum Message {
     Rotate(f32),
     TogleMode,
     TickMoon,
+    EndSplash,
     RestartGame,
     YouWon,
     YouLost,

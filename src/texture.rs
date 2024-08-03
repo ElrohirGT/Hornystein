@@ -16,6 +16,7 @@ pub struct GameTextures {
     pub start_screen: Texture,
     pub loose_screen: AnimatedTexture,
     pub win_screen: AnimatedTexture,
+    pub splash_screen: AnimatedTexture,
 }
 
 impl GameTextures {
@@ -28,6 +29,7 @@ impl GameTextures {
         let start_screen = format!("{}{}", asset_dir, "start_screen.jpg");
         let loose_screen = format!("{}{}", asset_dir, "loose_screen.gif");
         let win_screen = format!("{}{}", asset_dir, "win_screen.gif");
+        let splash_screen = format!("{}{}", asset_dir, "splash.gif");
 
         let horizontal_wall = Texture::new(&horizontal_wall);
         let vertical_wall = Texture::new(&vertical_wall);
@@ -36,6 +38,7 @@ impl GameTextures {
         let start_screen = Texture::new(&start_screen);
         let loose_screen = AnimatedTexture::new(&loose_screen);
         let win_screen = AnimatedTexture::new(&win_screen);
+        let splash_screen = AnimatedTexture::new(&splash_screen);
 
         let moon = Texture::new(&moon);
 
@@ -48,6 +51,7 @@ impl GameTextures {
             start_screen,
             loose_screen,
             win_screen,
+            splash_screen,
         }
     }
 }

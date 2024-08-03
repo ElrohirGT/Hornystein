@@ -123,6 +123,27 @@ fn render2d(framebuffer: &mut Framebuffer, data: &Model) {
 
 fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
     match data.status {
+        GameStatus::SplashScreen => {
+            let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
+            let texture = &data.textures.splash_screen;
+            let t_frame = (SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards!")
+                .as_millis()
+                / 60)
+                % texture.frame_count as u128;
+            for x in 0..framebuffer_width {
+                for y in 0..framebuffer_height {
+                    let tx = x * texture.width as usize / framebuffer_width;
+                    let ty = y * texture.height as usize / framebuffer_height;
+
+                    let color = texture.get_pixel_color(t_frame as usize, tx as u32, ty as u32);
+                    framebuffer.set_current_color(color);
+                    let _ =
+                        framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
+                }
+            }
+        }
         GameStatus::MainMenu => {
             let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
             let texture = &data.textures.start_screen;

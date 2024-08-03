@@ -42,18 +42,24 @@ fn main() {
     let frame_delay = Duration::from_millis(1000 / target_framerate);
 
     let mut data = init(framebuffer_width, framebuffer_height);
+    data.status = GameStatus::SplashScreen;
     data.audio_player.background.play();
     init_render(&mut framebuffer, &data);
+
+    let mut splash_timer = 0;
+    let splash_delay = 300;
 
     let mut previous_mouse_x = None;
     let mode_cooldown = 5;
     let mut mode_cooldown_timer = 0;
 
-    let last_recorded_frames_max_count = 10;
+    let last_recorded_frames_max_count = 60;
     let mut last_recorded_frames = VecDeque::with_capacity(last_recorded_frames_max_count);
     while window.is_open() {
         let start = Instant::now();
         mode_cooldown_timer = (mode_cooldown_timer - 1).max(0);
+        splash_timer = (splash_timer + 1).min(splash_delay + 1);
+
         // listen to inputs
         if window.is_key_down(Key::Escape) {
             break;
@@ -100,7 +106,12 @@ fn main() {
                 _ => None,
             })
             .collect();
-        messages.push(Message::TickMoon);
+        if let GameStatus::Gaming = data.status {
+            messages.push(Message::TickMoon);
+        }
+        if splash_timer == splash_delay {
+            messages.push(Message::EndSplash);
+        }
 
         previous_mouse_x = match previous_mouse_x {
             Some(previous_x) => mouse.get_position().ok().map(|Point { x, y }| {
@@ -377,6 +388,10 @@ fn update(data: Model, msg: Message) -> Model {
         Message::StartGame => {
             let status = GameStatus::Gaming;
 
+            Model { status, ..data }
+        }
+        Message::EndSplash => {
+            let status = GameStatus::MainMenu;
             Model { status, ..data }
         }
     }
