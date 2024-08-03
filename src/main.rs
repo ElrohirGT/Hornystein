@@ -15,7 +15,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::{Duration, Instant};
 
-const PLAYER_SPEED: f32 = 2.5;
+const PLAYER_SPEED: f32 = 3.0;
 const PLAYER_ROTATION_SPEED: f32 = 0.006;
 
 fn main() {
