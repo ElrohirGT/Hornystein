@@ -224,7 +224,7 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
         fov: std::f32::consts::FRAC_PI_2,
     };
 
-    let lolibunny_count = 5;
+    let lolibunny_count = 10;
     let lolibunnies = (0..lolibunny_count)
         .map(|_| {
             let mut rng = rand::thread_rng();
@@ -284,6 +284,7 @@ fn update(data: Model, msg: Message) -> Model {
             let Model {
                 player,
                 lolibunnies,
+                status,
                 ..
             } = data;
             let mut position = player.position + delta;
@@ -305,10 +306,20 @@ fn update(data: Model, msg: Message) -> Model {
                 None => lolibunnies,
             };
 
+            let status = match lolibunnies.len() {
+                0 => {
+                    data.audio_player.background.sink.skip_one();
+                    data.audio_player.win_song.play();
+                    GameStatus::YouWon
+                }
+                _ => status,
+            };
+
             let player = Player { position, ..player };
             Model {
                 player,
                 lolibunnies,
+                status,
                 ..data
             }
         }
@@ -327,7 +338,7 @@ fn update(data: Model, msg: Message) -> Model {
                 moon_phase, status, ..
             } = data;
 
-            let moon_phase = (moon_phase + 3.5e-4).min(1.0);
+            let moon_phase = (moon_phase + 2.5e-4).min(1.0);
             let status = if are_equal(moon_phase, 1.0, f32::EPSILON) {
                 data.audio_player.background.sink.skip_one();
                 data.audio_player.loose_song.play();

@@ -5,7 +5,7 @@ use nalgebra_glm::vec2_to_vec3;
 
 use crate::{
     color::Color,
-    framebuffer::{self, Framebuffer},
+    framebuffer::Framebuffer,
     raycaster::{cast_ray_2d, cast_ray_3d},
     texture::{GameTextures, Texture},
     BoardCell, GameStatus, Model,
