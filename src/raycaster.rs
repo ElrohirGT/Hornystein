@@ -1,6 +1,6 @@
 use nalgebra_glm::vec2_to_vec3;
 
-use crate::{framebuffer::Framebuffer, Board, BoardCell, Model, Player};
+use crate::{framebuffer::Framebuffer, render::scale_to_fit, Board, BoardCell, Model, Player};
 
 pub struct Intersect {
     pub distance: f32,
@@ -66,15 +66,13 @@ pub fn cast_ray_2d(framebuffer: &mut Framebuffer, maze: &Board, player: &Player,
         let y = player.position.y + sin;
         let position = nalgebra_glm::Vec2::new(x, y);
 
-        let _ = framebuffer.paint_point(vec2_to_vec3(&position));
-
-        // println!("Checking cords at: {}, {}", x, y);
+        let position = scale_to_fit(framebuffer, vec2_to_vec3(&position));
+        let _ = framebuffer.paint_point(position);
 
         let i = (x / maze.cell_dimensions.0) as usize;
         let j = (y / maze.cell_dimensions.1) as usize;
         let cell = &maze.cells[j][i];
 
-        // println!("Checking cell [{}] at: {}, {}", cell, x, y);
         match cell {
             BoardCell::HorizontalWall | BoardCell::VerticalWall | BoardCell::PillarWall => {
                 return;

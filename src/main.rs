@@ -3,7 +3,7 @@ use hornystein::enemies::LoliBunny;
 use hornystein::render::{init_render, render};
 use hornystein::texture::GameTextures;
 use hornystein::{are_equal, framebuffer, BoardCell, GameStatus};
-use hornystein::{Board, GameMode, Message, Model, Player};
+use hornystein::{Board, Message, Model, Player};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use mouse_rs::types::Point;
 use mouse_rs::Mouse;
@@ -81,14 +81,6 @@ fn main() {
                 }
                 Key::A => Some(Message::Rotate(-PLAYER_ROTATION_SPEED * 10.0)),
                 Key::D => Some(Message::Rotate(PLAYER_ROTATION_SPEED * 10.0)),
-                Key::M => {
-                    if mode_cooldown_timer == 0 {
-                        mode_cooldown_timer = mode_cooldown;
-                        Some(Message::TogleMode)
-                    } else {
-                        None
-                    }
-                }
                 Key::Space => match (mode_cooldown_timer, &data.status) {
                     (0, GameStatus::MainMenu) => {
                         mode_cooldown_timer = mode_cooldown;
@@ -232,8 +224,6 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
         fov: std::f32::consts::FRAC_PI_2,
     };
 
-    let mode = GameMode::ThreeD;
-
     let lolibunny_count = 5;
     let lolibunnies = (0..lolibunny_count)
         .map(|_| {
@@ -260,7 +250,6 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
     Model {
         board,
         player,
-        mode,
         textures,
         audio_player,
         lolibunnies,
@@ -294,7 +283,6 @@ fn update(data: Model, msg: Message) -> Model {
         Message::Move(delta) => {
             let Model {
                 player,
-                mode,
                 lolibunnies,
                 ..
             } = data;
@@ -320,7 +308,6 @@ fn update(data: Model, msg: Message) -> Model {
             let player = Player { position, ..player };
             Model {
                 player,
-                mode,
                 lolibunnies,
                 ..data
             }
@@ -334,15 +321,6 @@ fn update(data: Model, msg: Message) -> Model {
             };
 
             Model { player, ..data }
-        }
-        Message::TogleMode => {
-            let Model { mode, .. } = data;
-
-            let mode = match mode {
-                GameMode::TwoD => GameMode::ThreeD,
-                GameMode::ThreeD => GameMode::TwoD,
-            };
-            Model { mode, ..data }
         }
         Message::TickMoon => {
             let Model {

@@ -1,13 +1,14 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use glm::Vec3;
 use nalgebra_glm::vec2_to_vec3;
 
 use crate::{
     color::Color,
-    framebuffer::Framebuffer,
+    framebuffer::{self, Framebuffer},
     raycaster::{cast_ray_2d, cast_ray_3d},
     texture::{GameTextures, Texture},
-    BoardCell, GameMode, GameStatus, Model,
+    BoardCell, GameStatus, Model,
 };
 
 fn from_char_to_texture<'a>(c: &BoardCell, textures: &'a GameTextures) -> Option<&'a Texture> {
@@ -56,15 +57,28 @@ pub fn init_render(framebuffer: &mut Framebuffer, data: &Model) {
 
 pub fn render(framebuffer: &mut Framebuffer, data: &Model) {
     framebuffer.clear();
+    render3d(framebuffer, data)
+}
 
-    match data.mode {
-        GameMode::TwoD => render2d(framebuffer, data),
-        GameMode::ThreeD => render3d(framebuffer, data),
-    }
+pub fn scale_to_fit(framebuffer: &Framebuffer, v: Vec3) -> Vec3 {
+    let f_width = framebuffer.width as f32;
+    let f_height = framebuffer.height as f32;
+
+    let width = f_width * 0.2;
+    let height = f_height * 0.2;
+
+    let padding = 20.0;
+    let start_x = f_width - width - padding;
+    let start_y = f_height - height - padding;
+
+    let x = v.x / f_width * width + start_x;
+    let y = v.y / f_height * height + start_y;
+    nalgebra_glm::Vec3::new(x, y, 0.0)
 }
 
 fn render2d(framebuffer: &mut Framebuffer, data: &Model) {
     let (maze_cell_width, maze_cell_height) = data.board.cell_dimensions;
+
     data.board
         .cells
         .iter()
@@ -87,18 +101,21 @@ fn render2d(framebuffer: &mut Framebuffer, data: &Model) {
             while current_x < end_x {
                 let mut current_y = start_y;
                 while current_y < end_y {
-                    let _ =
-                        framebuffer.paint_point(nalgebra_glm::Vec3::new(current_x, current_y, 0.0));
+                    let point = scale_to_fit(
+                        framebuffer,
+                        nalgebra_glm::Vec3::new(current_x, current_y, 0.0),
+                    );
+                    let _ = framebuffer.paint_point(point);
                     current_y += 0.5;
                 }
                 current_x += 0.5;
             }
         });
 
-    let num_rays = 5;
+    let num_rays = 20;
     for i in 0..num_rays {
-        let curren_ray = i as f32 / num_rays as f32;
-        let a = data.player.orientation - (data.player.fov / 2.0) + (data.player.fov * curren_ray);
+        let current_ray = i as f32 / num_rays as f32;
+        let a = data.player.orientation - (data.player.fov / 2.0) + (data.player.fov * current_ray);
 
         cast_ray_2d(framebuffer, &data.board, &data.player, a);
     }
@@ -112,13 +129,18 @@ fn render2d(framebuffer: &mut Framebuffer, data: &Model) {
 
         for x in start_x..(start_x + half_width * 2) {
             for y in start_y..(start_y + half_height * 2) {
-                let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
+                let point = scale_to_fit(
+                    framebuffer,
+                    nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0),
+                );
+                let _ = framebuffer.paint_point(point);
             }
         }
     }
 
     framebuffer.set_current_color(0x0000ff);
-    let _ = framebuffer.paint_point(vec2_to_vec3(&data.player.position));
+    let point = scale_to_fit(framebuffer, vec2_to_vec3(&data.player.position));
+    let _ = framebuffer.paint_point(point);
 }
 
 fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
@@ -263,8 +285,15 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
 
             // Render enemies
             render_lolibunny(framebuffer, data, &z_buffer);
+
+            // Render HUD
+            render_minimap(framebuffer, data);
         }
     }
+}
+
+fn render_minimap(framebuffer: &mut Framebuffer, data: &Model) {
+    render2d(framebuffer, data);
 }
 
 fn apply_lantern_effect(color: &Color, distance_from_center: f32, framebuffer_width: f32) -> Color {

@@ -32,16 +32,10 @@ pub struct Board {
     pub cell_dimensions: (f32, f32),
 }
 
-pub enum GameMode {
-    TwoD,
-    ThreeD,
-}
-
 pub struct Model {
     pub board: Board,
     pub framebuffer_dimensions: (usize, usize),
     pub player: Player,
-    pub mode: GameMode,
     pub textures: GameTextures,
     pub audio_player: AudioPlayer,
     pub lolibunnies: Vec<enemies::LoliBunny>,
@@ -66,7 +60,6 @@ pub struct Player {
 pub enum Message {
     Move(nalgebra_glm::Vec2),
     Rotate(f32),
-    TogleMode,
     TickMoon,
     EndSplash,
     RestartGame,
