@@ -12,8 +12,10 @@ pub struct GameTextures {
     pub vertical_wall: Texture,
     pub corner_wall: Texture,
     pub lolibunny: Texture,
-    pub moon: AnimatedTexture,
+    pub moon: Texture,
     pub start_screen: Texture,
+    pub loose_screen: AnimatedTexture,
+    pub win_screen: AnimatedTexture,
 }
 
 impl GameTextures {
@@ -22,16 +24,20 @@ impl GameTextures {
         let vertical_wall = format!("{}{}", asset_dir, "large_wall.jpg");
         let corner_wall = format!("{}{}", asset_dir, "corner.jpg");
         let lolibunny = format!("{}{}", asset_dir, "lolibunny.jpg");
-        let moon = format!("{}{}", asset_dir, "moon.gif");
+        let moon = format!("{}{}", asset_dir, "moon.jpg");
         let start_screen = format!("{}{}", asset_dir, "start_screen.jpg");
+        let loose_screen = format!("{}{}", asset_dir, "loose_screen.gif");
+        let win_screen = format!("{}{}", asset_dir, "win_screen.gif");
 
         let horizontal_wall = Texture::new(&horizontal_wall);
         let vertical_wall = Texture::new(&vertical_wall);
         let corner_wall = Texture::new(&corner_wall);
         let lolibunny = Texture::new(&lolibunny);
         let start_screen = Texture::new(&start_screen);
+        let loose_screen = AnimatedTexture::new(&loose_screen);
+        let win_screen = AnimatedTexture::new(&win_screen);
 
-        let moon = AnimatedTexture::new(&moon);
+        let moon = Texture::new(&moon);
 
         GameTextures {
             horizontal_wall,
@@ -40,6 +46,8 @@ impl GameTextures {
             lolibunny,
             moon,
             start_screen,
+            loose_screen,
+            win_screen,
         }
     }
 }

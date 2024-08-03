@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use nalgebra_glm::vec2_to_vec3;
 
 use crate::{
@@ -136,8 +138,48 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
                 }
             }
         }
-        GameStatus::YouLost => todo!(),
-        GameStatus::YouWon => todo!(),
+        GameStatus::YouLost => {
+            let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
+            let texture = &data.textures.loose_screen;
+            let t_frame = (SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards!")
+                .as_millis()
+                / 60)
+                % texture.frame_count as u128;
+            for x in 0..framebuffer_width {
+                for y in 0..framebuffer_height {
+                    let tx = x * texture.width as usize / framebuffer_width;
+                    let ty = y * texture.height as usize / framebuffer_height;
+
+                    let color = texture.get_pixel_color(t_frame as usize, tx as u32, ty as u32);
+                    framebuffer.set_current_color(color);
+                    let _ =
+                        framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
+                }
+            }
+        }
+        GameStatus::YouWon => {
+            let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
+            let texture = &data.textures.win_screen;
+            let t_frame = (SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards!")
+                .as_millis()
+                / 60)
+                % texture.frame_count as u128;
+            for x in 0..framebuffer_width {
+                for y in 0..framebuffer_height {
+                    let tx = x * texture.width as usize / framebuffer_width;
+                    let ty = y * texture.height as usize / framebuffer_height;
+
+                    let color = texture.get_pixel_color(t_frame as usize, tx as u32, ty as u32);
+                    framebuffer.set_current_color(color);
+                    let _ =
+                        framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
+                }
+            }
+        }
         GameStatus::Gaming => {
             let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
             render_moon(framebuffer, data);
@@ -205,7 +247,7 @@ fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
 }
 
 fn apply_lantern_effect(color: &Color, distance_from_center: f32, framebuffer_width: f32) -> Color {
-    color.change_brightness_by((framebuffer_width / distance_from_center - 5.0).min(1.0))
+    color.change_brightness_by((framebuffer_width / distance_from_center - 5.0).clamp(0.2, 1.0))
 }
 
 fn render_moon(framebuffer: &mut Framebuffer, data: &Model) {
@@ -226,15 +268,16 @@ fn render_moon(framebuffer: &mut Framebuffer, data: &Model) {
     let end_x = (center_x + radius) as isize;
     let end_y = (center_y + radius) as isize;
 
+    let texture = &textures.moon;
     for x in start_x..end_x {
         for y in start_y..end_y {
             let distance_to_center =
                 ((x as f32 - center_x).powi(2) + (y as f32 - center_y).powi(2)).sqrt();
             if distance_to_center <= radius {
-                let t_frame_idx = center_x as usize % textures.moon.frame_count;
-                let tx = (x - start_x) as u32;
-                let ty = (y - start_y) as u32;
-                let color = textures.moon.get_pixel_color(t_frame_idx, tx, ty);
+                // let t_frame_idx = center_x as usize % textures.moon.frame_count;
+                let tx = ((x - start_x) as f32 * texture.width as f32) / (radius * 2.0);
+                let ty = ((y - start_y) as f32 * texture.height as f32) / (radius * 2.0);
+                let color = texture.get_pixel_color(tx as u32, ty as u32);
                 framebuffer.set_current_color(color);
                 let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
             }
@@ -276,7 +319,7 @@ fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model, z_buffer: &[f32
         let end_y = (start_y as f32 + rendered_sprite_height) as isize;
 
         for x in start_x..(end_x) {
-            if sprite_distance >= z_buffer[x.max(0).min(framebuffer_width as isize - 1) as usize] {
+            if sprite_distance >= z_buffer[x.clamp(0, framebuffer_width as isize - 1) as usize] {
                 continue;
             }
             for y in start_y..(end_y) {
@@ -287,6 +330,8 @@ fn render_lolibunny(framebuffer: &mut Framebuffer, data: &Model, z_buffer: &[f32
                 let distance_from_center = ((x as f32 - framebuffer_width / 2.0).powi(2)
                     + (y as f32 - framebuffer_height / 2.0).powi(2))
                 .sqrt();
+                // framebuffer.set_current_color(color);
+
                 framebuffer.set_current_color(apply_lantern_effect(
                     &color,
                     distance_from_center,

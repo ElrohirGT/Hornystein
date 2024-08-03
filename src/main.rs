@@ -90,6 +90,13 @@ fn main() {
                     }
                     _ => None,
                 },
+                Key::R => match (mode_cooldown_timer, &data.status) {
+                    (0, GameStatus::YouLost) | (0, GameStatus::YouWon) => {
+                        mode_cooldown_timer = mode_cooldown;
+                        Some(Message::RestartGame)
+                    }
+                    _ => None,
+                },
                 _ => None,
             })
             .collect();
@@ -327,9 +334,24 @@ fn update(data: Model, msg: Message) -> Model {
             Model { mode, ..data }
         }
         Message::TickMoon => {
-            let Model { moon_phase, .. } = data;
+            let Model {
+                moon_phase, status, ..
+            } = data;
+
             let moon_phase = (moon_phase + 3.5e-4).min(1.0);
-            Model { moon_phase, ..data }
+            let status = if are_equal(moon_phase, 1.0, f32::EPSILON) {
+                data.audio_player.background.sink.skip_one();
+                data.audio_player.loose_song.play();
+                GameStatus::YouLost
+            } else {
+                status
+            };
+
+            Model {
+                moon_phase,
+                status,
+                ..data
+            }
         }
         Message::YouWon => {
             let status = GameStatus::YouWon;
@@ -347,7 +369,10 @@ fn update(data: Model, msg: Message) -> Model {
                 ..
             } = data;
             let (framebuffer_width, framebuffer_height) = framebuffer_dimensions;
-            init(framebuffer_width, framebuffer_height)
+
+            let data = init(framebuffer_width, framebuffer_height);
+            data.audio_player.background.play();
+            data
         }
         Message::StartGame => {
             let status = GameStatus::Gaming;
