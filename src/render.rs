@@ -5,7 +5,7 @@ use crate::{
     framebuffer::Framebuffer,
     raycaster::{cast_ray_2d, cast_ray_3d},
     texture::{GameTextures, Texture},
-    BoardCell, GameMode, Model,
+    BoardCell, GameMode, GameStatus, Model,
 };
 
 fn from_char_to_texture<'a>(c: &BoardCell, textures: &'a GameTextures) -> Option<&'a Texture> {
@@ -101,7 +101,7 @@ fn render2d(framebuffer: &mut Framebuffer, data: &Model) {
         cast_ray_2d(framebuffer, &data.board, &data.player, a);
     }
 
-    framebuffer.set_current_color(0xffff00);
+    framebuffer.set_current_color(0xff0000);
     let half_height = 5;
     let half_width = 5;
     for bunny in &data.lolibunnies {
@@ -120,64 +120,88 @@ fn render2d(framebuffer: &mut Framebuffer, data: &Model) {
 }
 
 fn render3d(framebuffer: &mut Framebuffer, data: &Model) {
-    let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
-    render_moon(framebuffer, data);
+    match data.status {
+        GameStatus::MainMenu => {
+            let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
+            let texture = &data.textures.start_screen;
+            for x in 0..framebuffer_width {
+                for y in 0..framebuffer_height {
+                    let tx = x * texture.width as usize / framebuffer_width;
+                    let ty = y * texture.height as usize / framebuffer_height;
 
-    let _half_width = framebuffer_width as f32 / 2.0;
-    let half_height = framebuffer_height as f32 / 2.0;
-    let player = &data.player;
-
-    let mut z_buffer = vec![f32::INFINITY; framebuffer_width];
-
-    // Render 3D Screen...
-    let num_rays = framebuffer_width;
-    (0..num_rays).for_each(|i| {
-        let current_ray = i as f32 / num_rays as f32;
-        let orientation = player.orientation - (player.fov / 2.0) + (player.fov * current_ray);
-
-        let intersect = cast_ray_3d(framebuffer, data, orientation);
-
-        if intersect.distance < z_buffer[i] {
-            z_buffer[i] = intersect.distance;
-        }
-
-        let distance_to_wall = intersect.distance;
-        let distance_to_projection_plane = 6.0 * std::f32::consts::PI;
-
-        // let distance_to_wall = intersect.distance * (orientation - player.orientation).cos();
-        let stake_height = (half_height / distance_to_wall) * distance_to_projection_plane;
-
-        let stake_top = (half_height - (stake_height / 2.0)) as usize;
-        let stake_bottom = (half_height + (stake_height / 2.0)) as usize;
-
-        for y in stake_top..stake_bottom {
-            let distance_from_center = ((framebuffer.width as f32 / 2.0 - i as f32).powi(2)
-                + (framebuffer.height as f32 / 2.0 - y as f32).powi(2))
-            .sqrt();
-            let color = match from_char_to_texture(&intersect.impact, &data.textures) {
-                Some(texture) => {
-                    // Calculate tx and ty.
-                    // Return color from texture.
-                    let ty = (y as f32 - stake_top as f32) / stake_height * (texture.height as f32);
-                    let tx = intersect.bx * texture.width as f32;
-                    texture.get_pixel_color(tx as u32, ty as u32)
+                    let color = texture.get_pixel_color(tx as u32, ty as u32);
+                    framebuffer.set_current_color(color);
+                    let _ =
+                        framebuffer.paint_point(nalgebra_glm::Vec3::new(x as f32, y as f32, 0.0));
                 }
-                None => from_cell_to_color(&intersect.impact),
-            };
-
-            framebuffer.set_current_color(apply_lantern_effect(
-                &color,
-                distance_from_center,
-                framebuffer_width as f32,
-            ));
-
-            // framebuffer.set_current_color(color);
-            let _ = framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, y as f32, 0.0));
+            }
         }
-    });
+        GameStatus::YouLost => todo!(),
+        GameStatus::YouWon => todo!(),
+        GameStatus::Gaming => {
+            let (framebuffer_width, framebuffer_height) = data.framebuffer_dimensions;
+            render_moon(framebuffer, data);
 
-    // Render enemies
-    render_lolibunny(framebuffer, data, &z_buffer);
+            let _half_width = framebuffer_width as f32 / 2.0;
+            let half_height = framebuffer_height as f32 / 2.0;
+            let player = &data.player;
+
+            let mut z_buffer = vec![f32::INFINITY; framebuffer_width];
+
+            // Render 3D Screen...
+            let num_rays = framebuffer_width;
+            (0..num_rays).for_each(|i| {
+                let current_ray = i as f32 / num_rays as f32;
+                let orientation =
+                    player.orientation - (player.fov / 2.0) + (player.fov * current_ray);
+
+                let intersect = cast_ray_3d(framebuffer, data, orientation);
+
+                if intersect.distance < z_buffer[i] {
+                    z_buffer[i] = intersect.distance;
+                }
+
+                let distance_to_wall = intersect.distance;
+                let distance_to_projection_plane = 6.0 * std::f32::consts::PI;
+
+                let stake_height = (half_height / distance_to_wall) * distance_to_projection_plane;
+
+                let stake_top = (half_height - (stake_height / 2.0)) as usize;
+                let stake_bottom = (half_height + (stake_height / 2.0)) as usize;
+
+                for y in stake_top..stake_bottom {
+                    let distance_from_center = ((framebuffer.width as f32 / 2.0 - i as f32)
+                        .powi(2)
+                        + (framebuffer.height as f32 / 2.0 - y as f32).powi(2))
+                    .sqrt();
+                    let color = match from_char_to_texture(&intersect.impact, &data.textures) {
+                        Some(texture) => {
+                            // Calculate tx and ty.
+                            // Return color from texture.
+                            let ty = (y as f32 - stake_top as f32) / stake_height
+                                * (texture.height as f32);
+                            let tx = intersect.bx * texture.width as f32;
+                            texture.get_pixel_color(tx as u32, ty as u32)
+                        }
+                        None => from_cell_to_color(&intersect.impact),
+                    };
+
+                    framebuffer.set_current_color(apply_lantern_effect(
+                        &color,
+                        distance_from_center,
+                        framebuffer_width as f32,
+                    ));
+
+                    // framebuffer.set_current_color(color);
+                    let _ =
+                        framebuffer.paint_point(nalgebra_glm::Vec3::new(i as f32, y as f32, 0.0));
+                }
+            });
+
+            // Render enemies
+            render_lolibunny(framebuffer, data, &z_buffer);
+        }
+    }
 }
 
 fn apply_lantern_effect(color: &Color, distance_from_center: f32, framebuffer_width: f32) -> Color {
@@ -207,7 +231,7 @@ fn render_moon(framebuffer: &mut Framebuffer, data: &Model) {
             let distance_to_center =
                 ((x as f32 - center_x).powi(2) + (y as f32 - center_y).powi(2)).sqrt();
             if distance_to_center <= radius {
-                let t_frame_idx = center_y as usize % textures.moon.frame_count;
+                let t_frame_idx = center_x as usize % textures.moon.frame_count;
                 let tx = (x - start_x) as u32;
                 let ty = (y - start_y) as u32;
                 let color = textures.moon.get_pixel_color(t_frame_idx, tx, ty);

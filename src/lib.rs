@@ -46,6 +46,14 @@ pub struct Model {
     pub audio_player: AudioPlayer,
     pub lolibunnies: Vec<enemies::LoliBunny>,
     pub moon_phase: f32,
+    pub status: GameStatus,
+}
+
+pub enum GameStatus {
+    MainMenu,
+    Gaming,
+    YouLost,
+    YouWon,
 }
 
 pub struct Player {
@@ -59,4 +67,8 @@ pub enum Message {
     Rotate(f32),
     TogleMode,
     TickMoon,
+    RestartGame,
+    YouWon,
+    YouLost,
+    StartGame,
 }

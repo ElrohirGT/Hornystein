@@ -13,6 +13,7 @@ pub struct GameTextures {
     pub corner_wall: Texture,
     pub lolibunny: Texture,
     pub moon: AnimatedTexture,
+    pub start_screen: Texture,
 }
 
 impl GameTextures {
@@ -22,11 +23,13 @@ impl GameTextures {
         let corner_wall = format!("{}{}", asset_dir, "corner.jpg");
         let lolibunny = format!("{}{}", asset_dir, "lolibunny.jpg");
         let moon = format!("{}{}", asset_dir, "moon.gif");
+        let start_screen = format!("{}{}", asset_dir, "start_screen.jpg");
 
         let horizontal_wall = Texture::new(&horizontal_wall);
         let vertical_wall = Texture::new(&vertical_wall);
         let corner_wall = Texture::new(&corner_wall);
         let lolibunny = Texture::new(&lolibunny);
+        let start_screen = Texture::new(&start_screen);
 
         let moon = AnimatedTexture::new(&moon);
 
@@ -36,6 +39,7 @@ impl GameTextures {
             corner_wall,
             lolibunny,
             moon,
+            start_screen,
         }
     }
 }

@@ -2,26 +2,28 @@ use hornystein::audio::AudioPlayer;
 use hornystein::enemies::LoliBunny;
 use hornystein::render::{init_render, render};
 use hornystein::texture::GameTextures;
-use hornystein::{framebuffer, BoardCell};
+use hornystein::{are_equal, framebuffer, BoardCell, GameStatus};
 use hornystein::{Board, GameMode, Message, Model, Player};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use mouse_rs::types::Point;
 use mouse_rs::Mouse;
+use nalgebra_glm::Vec2;
+use rand::Rng;
 use std::collections::VecDeque;
 use std::env;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::time::{Duration, Instant};
 
-const PLAYER_SPEED: f32 = 1.5;
-const PLAYER_ROTATION_SPEED: f32 = 0.005;
+const PLAYER_SPEED: f32 = 2.5;
+const PLAYER_ROTATION_SPEED: f32 = 0.006;
 
 fn main() {
-    let window_width = 800;
-    let window_height = 800;
+    let window_width = 1080;
+    let window_height = 720;
 
-    let framebuffer_width = 1000;
-    let framebuffer_height = 1000;
+    let framebuffer_width = 1080;
+    let framebuffer_height = 720;
 
     let mut framebuffer = framebuffer::Framebuffer::new(framebuffer_width, framebuffer_height);
 
@@ -81,6 +83,13 @@ fn main() {
                         None
                     }
                 }
+                Key::Space => match (mode_cooldown_timer, &data.status) {
+                    (0, GameStatus::MainMenu) => {
+                        mode_cooldown_timer = mode_cooldown;
+                        Some(Message::StartGame)
+                    }
+                    _ => None,
+                },
                 _ => None,
             })
             .collect();
@@ -143,32 +152,38 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
 
     let assets_dir = args.next().expect("No asset dir received!");
 
-    println!("Loading textures from: {}...", file_name);
+    println!("Loading textures from: {}...", assets_dir);
     let textures = GameTextures::new(&assets_dir);
 
-    println!("Loading audios from: {}...", file_name);
+    println!("Loading audios from: {}...", assets_dir);
     let audio_player = AudioPlayer::new(&assets_dir);
 
     let file = File::open(file_name).expect("Couldn't open maze file!");
     let reader = BufReader::new(file);
 
+    let mut empty_cells = vec![];
     let cells: Vec<Vec<BoardCell>> = reader
         .lines()
-        .filter_map(|line| {
+        .enumerate()
+        .filter_map(|(rowx, line)| {
             let line = line.unwrap();
             match line.trim() {
                 "" => None,
                 not_empty => Some(
                     not_empty
                         .chars()
-                        .filter_map(|c| {
+                        .enumerate()
+                        .filter_map(|(colx, c)| {
                             Some(match c {
                                 '|' => BoardCell::VerticalWall,
                                 '-' => BoardCell::HorizontalWall,
                                 '+' => BoardCell::PillarWall,
                                 'g' => BoardCell::Goal,
                                 'p' => BoardCell::Player,
-                                ' ' => BoardCell::Empty,
+                                ' ' => {
+                                    empty_cells.push((colx, rowx));
+                                    BoardCell::Empty
+                                }
                                 _ => return None,
                             })
                         })
@@ -201,9 +216,28 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
 
     let mode = GameMode::ThreeD;
 
-    let lolibunnies = vec![LoliBunny {
-        position: nalgebra_glm::Vec2::new(250.0, 250.0),
-    }];
+    let lolibunny_count = 5;
+    let lolibunnies = (0..lolibunny_count)
+        .map(|_| {
+            let mut rng = rand::thread_rng();
+            let mut position;
+            loop {
+                let idx = rng.gen_range(0..empty_cells.len());
+                let (x, y) = empty_cells[idx];
+                position = nalgebra_glm::Vec2::new(
+                    x as f32 * maze_cell_width + maze_cell_width / 2.0,
+                    y as f32 * maze_cell_height + maze_cell_height / 2.0,
+                );
+
+                let distance = nalgebra_glm::distance(&player_position, &position);
+                if distance > framebuffer_width as f32 * 0.2 {
+                    empty_cells.remove(idx);
+                    break;
+                }
+            }
+            LoliBunny { position }
+        })
+        .collect();
 
     Model {
         board,
@@ -214,6 +248,7 @@ fn init(framebuffer_width: usize, framebuffer_height: usize) -> Model {
         lolibunnies,
         framebuffer_dimensions: (framebuffer_width, framebuffer_height),
         moon_phase: 0.0,
+        status: hornystein::GameStatus::MainMenu,
     }
 }
 
@@ -237,15 +272,14 @@ pub fn is_border(c: &BoardCell) -> bool {
 }
 
 fn update(data: Model, msg: Message) -> Model {
-    let Model {
-        player,
-        mode,
-        moon_phase,
-        ..
-    } = data;
-
     match msg {
         Message::Move(delta) => {
+            let Model {
+                player,
+                mode,
+                lolibunnies,
+                ..
+            } = data;
             let mut position = player.position + delta;
 
             let i = (position.x / data.board.cell_dimensions.0) as usize;
@@ -255,44 +289,83 @@ fn update(data: Model, msg: Message) -> Model {
                 position = player.position;
             }
 
+            let lolibunnies = match get_touching_loli(&lolibunnies, &player.position) {
+                Some(idx) => lolibunnies
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(i, _)| i != &idx)
+                    .map(|(_, a)| a)
+                    .collect(),
+                None => lolibunnies,
+            };
+
             let player = Player { position, ..player };
             Model {
                 player,
                 mode,
+                lolibunnies,
                 ..data
             }
         }
         Message::Rotate(delta) => {
+            let Model { player, .. } = data;
             let orientation = player.orientation + delta;
             let player = Player {
                 orientation,
                 ..player
             };
-            Model {
-                player,
-                mode,
-                ..data
-            }
+
+            Model { player, ..data }
         }
         Message::TogleMode => {
+            let Model { mode, .. } = data;
+
             let mode = match mode {
                 GameMode::TwoD => GameMode::ThreeD,
                 GameMode::ThreeD => GameMode::TwoD,
             };
-            Model {
-                player,
-                mode,
-                ..data
-            }
+            Model { mode, ..data }
         }
         Message::TickMoon => {
-            let moon_phase = (moon_phase + 5e-4).min(1.0);
-            Model {
-                player,
-                mode,
-                moon_phase,
-                ..data
-            }
+            let Model { moon_phase, .. } = data;
+            let moon_phase = (moon_phase + 3.5e-4).min(1.0);
+            Model { moon_phase, ..data }
+        }
+        Message::YouWon => {
+            let status = GameStatus::YouWon;
+
+            Model { status, ..data }
+        }
+        Message::YouLost => {
+            let status = GameStatus::YouWon;
+
+            Model { status, ..data }
+        }
+        Message::RestartGame => {
+            let Model {
+                framebuffer_dimensions,
+                ..
+            } = data;
+            let (framebuffer_width, framebuffer_height) = framebuffer_dimensions;
+            init(framebuffer_width, framebuffer_height)
+        }
+        Message::StartGame => {
+            let status = GameStatus::Gaming;
+
+            Model { status, ..data }
         }
     }
+}
+
+fn get_touching_loli(lolis: &[LoliBunny], pos: &Vec2) -> Option<usize> {
+    let bounding_box_size = 10.0;
+    for (idx, loli) in lolis.iter().enumerate() {
+        if are_equal(pos.x, loli.position.x, bounding_box_size)
+            && are_equal(pos.y, loli.position.y, bounding_box_size)
+        {
+            return Some(idx);
+        }
+    }
+
+    None
 }

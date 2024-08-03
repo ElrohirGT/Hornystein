@@ -669,6 +669,7 @@ dependencies = [
  "minifb",
  "mouse-rs",
  "nalgebra-glm",
+ "rand",
  "rodio",
 ]
 
