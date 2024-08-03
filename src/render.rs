@@ -22,7 +22,6 @@ fn from_char_to_texture<'a>(c: &BoardCell, textures: &'a GameTextures) -> Option
 
 fn from_cell_to_color(c: &BoardCell) -> Color {
     match c {
-        BoardCell::Goal => 0x8b0000,
         BoardCell::HorizontalWall | BoardCell::VerticalWall | BoardCell::PillarWall => 0xff00ff,
         _ => 0xffffff,
     }
